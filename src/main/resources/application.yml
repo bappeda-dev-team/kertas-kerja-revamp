@@ -1,0 +1,93 @@
+spring:
+  application:
+    name: Kertas-Kerja-Web-App
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kertaskerja
+    username: majapahit
+    password: Madiun@123
+    hikari:
+      connection-timeout: 2000
+      maximum-pool-size: 5
+
+  flyway:
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        access:
+          strategy: field
+        use-new-id-generator-mappings: false
+
+  docker:
+    compose:
+      enabled: false
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+      file-size-threshold: 2KB
+      location: ${java.io.tmpdir}
+      resolve-lazily: false
+
+server:
+  port: 8080
+  servlet:
+    context-path: /kertas-kerja/api
+  tomcat:
+    allow-encoded-slashes: true
+
+logging:
+  level:
+    root: warn
+    org:
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+        transaction: DEBUG
+        orm:
+          jdbc:
+            bind: TRACE
+      springdoc: DEBUG
+      springframework:
+        web: DEBUG
+        security: DEBUG
+      flywaydb: INFO
+    io:
+      swagger: DEBUG
+    cc:
+      kertaskerja:
+        pengajuan_kta:
+          security: DEBUG
+        aop: DEBUG
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+  override-with-generic-response: false
+  show-actuator: false
+
+jwt:
+  secret: "jwtauthsecretpengajuanktangawikab@3521"
+  expirationMillis: 3600000
+
+recaptcha:
+  site-key: randomrecapchav3@1234567890
+  secret-key: HS01NxW8yhLMCm8IfGnfiNzVzTXVAJ3C

@@ -1,0 +1,15 @@
+package cc.kertaskerja.pengajuan_kta.service.auth;
+
+import cc.kertaskerja.pengajuan_kta.dto.Auth.AccountResponse;
+import cc.kertaskerja.pengajuan_kta.dto.Auth.LoginRequest;
+import cc.kertaskerja.pengajuan_kta.dto.Auth.LoginResponse;
+import cc.kertaskerja.pengajuan_kta.dto.Auth.RegisterRequest;
+
+public interface AuthService {
+
+    AccountResponse.SendOtp sendOTP(RegisterRequest.SendOtp request);
+
+    AccountResponse register(RegisterRequest request);
+
+    LoginResponse login(LoginRequest request);
+}
