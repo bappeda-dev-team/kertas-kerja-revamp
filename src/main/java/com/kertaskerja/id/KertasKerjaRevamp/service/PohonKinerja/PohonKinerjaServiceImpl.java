@@ -25,7 +25,6 @@ import com.kertaskerja.id.KertasKerjaRevamp.helper.Mixins;
 import com.kertaskerja.id.KertasKerjaRevamp.repository.PohonKinerjaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
