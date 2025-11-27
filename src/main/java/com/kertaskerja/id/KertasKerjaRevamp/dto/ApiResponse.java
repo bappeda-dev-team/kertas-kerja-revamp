@@ -33,7 +33,6 @@ public class ApiResponse<T> {
         this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
-    // Static factory methods for success responses
     public static <T> ApiResponse<T> success(T data, String message) {
         return new ApiResponse<>(true, 200, message, data);
     }
@@ -68,7 +67,6 @@ public class ApiResponse<T> {
               .build();
     }
 
-    // Static factory methods for error responses
     public static <T> ApiResponse<T> error(int status, String message) {
         return ApiResponse.<T>builder()
               .success(false)

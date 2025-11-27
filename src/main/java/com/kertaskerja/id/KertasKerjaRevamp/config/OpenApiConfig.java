@@ -20,12 +20,12 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
-        String serverUrl = "http://localhost:8080" + contextPath;
+        String serverUrl = "http://localhost:8181" + contextPath;
         
         return new OpenAPI()
               .info(new Info()
                     .title("Kertas Kerja API Docs")
-                    .version("1.0.0")
+                    .version("2.0.0")
                     .description("Pejabat Pengelola Informasi dan Dokumentasi"))
               .servers(List.of(
                     new Server()
