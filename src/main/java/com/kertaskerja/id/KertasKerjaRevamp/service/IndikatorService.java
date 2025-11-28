@@ -22,15 +22,16 @@ import java.util.stream.Collectors;
 public class IndikatorService {
 
     private final IndikatorRepository repository;
-    // TAMBAHAN: Kita butuh ini buat ambil target
     private final TargetRepository targetRepository;
 
     public List<IndikatorDto.Response> findAll() {
         List<Indikator> indikators = repository.findAll();
-        // Optimasi: Ambil semua target dulu biar ga N+1 Query
         List<Target> allTargets = targetRepository.findAll();
 
-        // Grouping Target berdasarkan Indikator ID
+        return getResponses(indikators, allTargets);
+    }
+
+    private List<IndikatorDto.Response> getResponses(List<Indikator> indikators, List<Target> allTargets) {
         Map<Long, List<Target>> targetMap = allTargets.stream()
                 .collect(Collectors.groupingBy(Target::getIndikatorId));
 
@@ -45,27 +46,15 @@ public class IndikatorService {
     public List<IndikatorDto.Response> findByPohonId(Long pohonId) {
         List<Indikator> indikators = repository.findByPohonKinerjaId(pohonId);
 
-        // Disini kita bisa ambil target spesifik atau semua (tergantung performa).
-        // Untuk simpelnya, kita ambil semua target lalu filter di memory (sama seperti findAll)
-        // Atau kalau mau lebih irit, query targetRepository.findByListIndikatorIds(...) -> tapi repo belum support
         List<Target> allTargets = targetRepository.findAll();
 
-        Map<Long, List<Target>> targetMap = allTargets.stream()
-                .collect(Collectors.groupingBy(Target::getIndikatorId));
-
-        return indikators.stream()
-                .map(ind -> {
-                    List<Target> myTargets = targetMap.getOrDefault(ind.getId(), new ArrayList<>());
-                    return mapToResponse(ind, myTargets);
-                })
-                .toList();
+        return getResponses(indikators, allTargets);
     }
 
     public IndikatorDto.Response findById(Long id) {
         Indikator indikator = repository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Indikator tidak ditemukan"));
 
-        // Ambil target khusus untuk indikator ini
         List<Target> targets = targetRepository.findByIndikatorId(id);
 
         return mapToResponse(indikator, targets);
@@ -76,7 +65,6 @@ public class IndikatorService {
         Indikator indikator = mapToEntity(request);
         Indikator savedIndikator = repository.save(indikator);
 
-        // Saat create baru, target pasti masih kosong
         return mapToResponse(savedIndikator, new ArrayList<>());
     }
 
@@ -91,7 +79,6 @@ public class IndikatorService {
 
         repository.update(indikatorBaru);
 
-        // Ambil target yang sudah ada (biar return response-nya lengkap)
         List<Target> targets = targetRepository.findByIndikatorId(id);
 
         return mapToResponse(indikatorBaru, targets);
@@ -104,11 +91,8 @@ public class IndikatorService {
         repository.delete(id);
     }
 
-    // --- MAPPING HELPERS ---
-
-    // Update Mapper: Terima List<Target> dari luar
     private IndikatorDto.Response mapToResponse(Indikator entity, List<Target> targets) {
-        // Konversi List<Target> ke List<TargetDto.Response>
+
         List<TargetDto.Response> target = targets.stream()
                 .map(this::mapTargetToResponse)
                 .toList();
@@ -119,7 +103,7 @@ public class IndikatorService {
                 entity.getIndikator(),
                 entity.getKeterangan(),
                 entity.getTahun(),
-                target // Masukkan ke DTO
+                target
         );
     }
 
