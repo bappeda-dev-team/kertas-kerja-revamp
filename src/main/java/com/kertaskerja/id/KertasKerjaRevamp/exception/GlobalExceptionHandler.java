@@ -108,6 +108,7 @@ public class GlobalExceptionHandler {
 
         logger.warning("Method Argument Type Mismatch Exception: " + ex.getMessage());
 
+        assert ex.getRequiredType() != null;
         String message = String.format("Invalid value '%s' for parameter '%s'. Expected type: %s",
               ex.getValue(), ex.getName(), ex.getRequiredType().getSimpleName());
 
