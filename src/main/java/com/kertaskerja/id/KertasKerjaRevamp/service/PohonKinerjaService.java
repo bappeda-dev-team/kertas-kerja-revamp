@@ -68,25 +68,10 @@ public class PohonKinerjaService {
         return rootNode;
     }
 
-    public List<PohonTreeDto> getFullTree() {
-        List<PohonKinerja> allPohon = pohonKinerjaRepository.findAll();
-        List<Indikator> allIndikator = indikatorRepository.findAll();
-        List<Target> allTarget = targetRepository.findAll();
-
-        Map<Long, PohonTreeDto> nodeMap = buildNodeMap(allPohon, allIndikator, allTarget);
-        List<PohonTreeDto> roots = new ArrayList<>();
-
-        for (PohonTreeDto node : nodeMap.values()) {
-            if (node.getParentId() == null) {
-                roots.add(node);
-            } else {
-                PohonTreeDto parent = nodeMap.get(node.getParentId());
-                if (parent != null) {
-                    parent.getChildren().add(node);
-                }
-            }
-        }
-        return roots;
+    public List<PohonKinerjaDto.Response> findAllTematik() {
+        return pohonKinerjaRepository.findAllTematik().stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     @Transactional
@@ -117,15 +102,6 @@ public class PohonKinerjaService {
     public void delete(Long id) {
         pohonKinerjaRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         pohonKinerjaRepository.deleteById(id);
-    }
-
-    public List<PohonKinerjaDto.Response> findAll() {
-        return pohonKinerjaRepository.findAll().stream().map(this::mapToResponse).toList();
-    }
-
-    public PohonKinerjaDto.Response findById(Long id) {
-        return pohonKinerjaRepository.findById(id).map(this::mapToResponse)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private Map<Long, PohonTreeDto> buildNodeMap(List<PohonKinerja> pohonList, List<Indikator> indikatorList, List<Target> targetList) {

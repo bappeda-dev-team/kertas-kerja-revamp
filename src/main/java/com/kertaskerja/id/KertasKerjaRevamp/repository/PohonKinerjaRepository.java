@@ -84,6 +84,13 @@ public class PohonKinerjaRepository {
         return jdbcClient.sql(sql).param("id", id).query(pohonRowMapper).optional();
     }
 
+    public List<PohonKinerja> findAllTematik() {
+        String sql = "SELECT * FROM pohon_kinerja WHERE jenis_pohon = 'TEMATIK' ORDER BY id";
+        return jdbcClient.sql(sql)
+                .query(pohonRowMapper)
+                .list();
+    }
+
     @Transactional
     public void update(PohonKinerja pohon) {
         String sql = """

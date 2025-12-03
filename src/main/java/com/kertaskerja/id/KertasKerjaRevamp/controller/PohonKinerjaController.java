@@ -22,18 +22,18 @@ public class PohonKinerjaController {
 
     private final PohonKinerjaService service;
 
-    @GetMapping("/tree")
-    @Operation(summary = "Get Full Tree Structure", description = "Retrieves the complete hierarchy of performance trees from root level down to operational level")
-    public ResponseEntity<ApiResponse<List<PohonTreeDto>>> getFullTree() {
-        List<PohonTreeDto> treeData = service.getFullTree();
-        return ResponseEntity.ok(ApiResponse.success(treeData, "Succesfully loaded all tree data"));
-    }
-
     @GetMapping("/{id}")
     @Operation(summary = "Get Specific Tree Structure", description = "Retrieves the hierarchy starting from a specific node ID")
     public ResponseEntity<ApiResponse<PohonTreeDto>> getTreeById(@PathVariable Long id) {
         PohonTreeDto treeData = service.getTreeById(id);
         return ResponseEntity.ok(ApiResponse.success(treeData, "Succesfully loaded tree data by Id"));
+    }
+
+    @GetMapping("/tematik")
+    @Operation(summary = "Get All Tematik", description = "Retrieves all root level (Tematik) performance trees")
+    public ResponseEntity<ApiResponse<List<PohonKinerjaDto.Response>>> getTematik() {
+        List<PohonKinerjaDto.Response> data = service.findAllTematik();
+        return ResponseEntity.ok(ApiResponse.success(data, "Successfully loaded all tematik data"));
     }
 
     @PostMapping
