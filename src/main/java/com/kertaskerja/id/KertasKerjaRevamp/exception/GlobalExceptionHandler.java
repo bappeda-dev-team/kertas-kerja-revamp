@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -203,6 +204,20 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Object>> handleResponseStatusException(
+            ResponseStatusException ex, HttpServletRequest request) {
+
+        logger.warning("Response Status Exception: " + ex.getReason());
+
+        ApiResponse<Object> response = ApiResponse.error(
+                ex.getStatusCode().value(),
+                ex.getReason()
+        );
+
+        return new ResponseEntity<>(response, ex.getStatusCode());
     }
 
     // ========== 409 CONFLICT EXCEPTIONS ==========

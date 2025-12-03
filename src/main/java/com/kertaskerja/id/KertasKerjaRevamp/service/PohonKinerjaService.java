@@ -32,18 +32,38 @@ public class PohonKinerjaService {
     private final TargetRepository targetRepository;
 
     public PohonTreeDto getTreeById(Long id) {
-        if (pohonKinerjaRepository.findById(id).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pohon Kinerja tidak ditemukan");
+        PohonKinerja nodeCheck = pohonKinerjaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pohon Kinerja tidak ditemukan"));
+
+        boolean isRoot = nodeCheck.getParentId() == null
+                && nodeCheck.getLevelPohon() == 0
+                && nodeCheck.getJenisPohon() == JenisPohon.TEMATIK;
+
+        if (!isRoot) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID " + id + " bukan id TEMATIK (Level 0).");
         }
 
         List<PohonKinerja> specificTreeNodes = pohonKinerjaRepository.findTreeNodes(id);
-        List<Indikator> allIndikator = indikatorRepository.findAll();
-        List<Target> allTarget = targetRepository.findAll();
 
-        Map<Long, PohonTreeDto> nodeMap = buildNodeMap(specificTreeNodes, allIndikator, allTarget);
+        List<Long> treeIds = specificTreeNodes.stream()
+                .map(PohonKinerja::getId)
+                .toList();
+
+        List<Indikator> relevantIndikators = indikatorRepository.findByPohonKinerjaIdIn(treeIds);
+
+        List<Long> indIds = relevantIndikators.stream()
+                .map(Indikator::getId)
+                .toList();
+
+        List<Target> relevantTargets = targetRepository.findByIndikatorIdIn(indIds);
+
+        Map<Long, PohonTreeDto> nodeMap = buildNodeMap(specificTreeNodes, relevantIndikators, relevantTargets);
 
         PohonTreeDto rootNode = nodeMap.get(id);
-        buildHierarchy(rootNode, nodeMap);
+
+        if (rootNode != null) {
+            buildHierarchy(rootNode, nodeMap);
+        }
 
         return rootNode;
     }

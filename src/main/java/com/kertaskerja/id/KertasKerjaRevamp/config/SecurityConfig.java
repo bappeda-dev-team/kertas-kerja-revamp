@@ -39,7 +39,7 @@ public class SecurityConfig {
               .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/actuator/health", "/public/**").permitAll()
                     .requestMatchers("/auth/**", "/pohon-kinerja/**", "/indikator/**", "/target/**").permitAll()
-                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").authenticated()
+                    .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").authenticated()
                     .anyRequest().authenticated()
               )
               .httpBasic(httpBasic -> httpBasic

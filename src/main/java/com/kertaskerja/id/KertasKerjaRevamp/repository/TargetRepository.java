@@ -37,6 +37,19 @@ public class TargetRepository {
                 .optional();
     }
 
+    public List<Target> findByIndikatorIdIn(List<Long> indikatorIds) {
+        if (indikatorIds == null || indikatorIds.isEmpty()) {
+            return List.of();
+        }
+
+        String sql = "SELECT * FROM target WHERE indikator_id IN (:ids)";
+
+        return jdbcClient.sql(sql)
+                .param("ids", indikatorIds)
+                .query(rowMapper)
+                .list();
+    }
+
     public List<Target> findByIndikatorId(Long indikatorId) {
         return jdbcClient.sql("SELECT * FROM target WHERE indikator_id = :indikatorId")
                 .param("indikatorId", indikatorId)

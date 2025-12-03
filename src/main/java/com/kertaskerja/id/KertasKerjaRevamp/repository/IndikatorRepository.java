@@ -37,6 +37,19 @@ public class IndikatorRepository {
                 .optional();
     }
 
+    public List<Indikator> findByPohonKinerjaIdIn(List<Long> pohonIds) {
+        if (pohonIds == null || pohonIds.isEmpty()) {
+            return List.of();
+        }
+
+        String sql = "SELECT * FROM indikator WHERE pohon_kinerja_id IN (:ids)";
+
+        return jdbcClient.sql(sql)
+                .param("ids", pohonIds)
+                .query(rowMapper)
+                .list();
+    }
+
     public List<Indikator> findByPohonKinerjaId(Long pohonKinerjaId) {
         return jdbcClient.sql("SELECT * FROM indikator WHERE pohon_kinerja_id = :pohonKinerjaId")
                 .param("pohonKinerjaId", pohonKinerjaId)
