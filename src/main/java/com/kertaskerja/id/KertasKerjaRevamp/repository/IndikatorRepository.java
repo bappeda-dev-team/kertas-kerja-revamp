@@ -21,7 +21,7 @@ public class IndikatorRepository {
             .pohonKinerjaId(rs.getLong("pohon_kinerja_id"))
             .indikator(rs.getString("indikator"))
             .keterangan(rs.getString("keterangan"))
-            .tahun(rs.getString("tahun"))
+            .tahun(rs.getInt("tahun"))
             .build();
 
     public List<Indikator> findAll() {

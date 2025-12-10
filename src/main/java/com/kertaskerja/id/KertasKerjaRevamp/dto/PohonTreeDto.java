@@ -1,14 +1,12 @@
 package com.kertaskerja.id.KertasKerjaRevamp.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -17,7 +15,7 @@ public class PohonTreeDto {
     private Long parentId;
     private String namaPohon;
     private String keterangan;
-    private String tahun;
+    private Integer tahun;
     private String jenisPohon;
     private Integer levelPohon;
     private String kodeOpd;

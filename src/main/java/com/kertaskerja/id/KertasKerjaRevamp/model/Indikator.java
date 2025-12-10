@@ -22,5 +22,5 @@ public class Indikator {
     private Long pohonKinerjaId;
     private String indikator;
     private String keterangan;
-    private String tahun;
+    private Integer tahun;
 }

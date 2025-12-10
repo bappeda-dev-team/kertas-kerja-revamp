@@ -22,5 +22,5 @@ public class Target {
     private Long indikatorId;
     private Double nilai;
     private String satuan;
-    private String tahun;
+    private Integer tahun;
 }

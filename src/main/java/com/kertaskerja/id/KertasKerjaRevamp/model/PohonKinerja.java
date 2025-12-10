@@ -23,7 +23,7 @@ public class PohonKinerja {
     private Long parentId;
     private String namaPohon;
     private String keterangan;
-    private String tahun;
+    private Integer tahun;
     private JenisPohon jenisPohon;
     private Integer levelPohon;
     private String kodeOpd;

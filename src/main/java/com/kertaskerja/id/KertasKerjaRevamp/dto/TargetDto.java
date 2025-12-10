@@ -18,7 +18,7 @@ public class TargetDto {
 
             @NotNull(message = "Tahun tidak boleh kosong")
             @Pattern(regexp = "\\d{4}", message = "Format tahun harus 4 digit angka (YYYY)")
-            String tahun
+            Integer tahun
     ) {}
 
     public record Response(
@@ -26,6 +26,6 @@ public class TargetDto {
             Long indikatorId,
             Double nilai,
             String satuan,
-            String tahun
+            Integer tahun
     ) {}
 }

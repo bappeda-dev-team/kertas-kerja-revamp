@@ -14,13 +14,4 @@ public enum JenisPohon {
     OPERATIONAL(5);
 
     private final int level;
-
-    public static JenisPohon fromLevel(int level) {
-        for (JenisPohon j : values()) {
-            if (j.level == level) {
-                return j;
-            }
-        }
-        throw new IllegalArgumentException("Level tidak valid: " + level);
-    }
 }

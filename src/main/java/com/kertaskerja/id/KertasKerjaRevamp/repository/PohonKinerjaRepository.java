@@ -25,7 +25,7 @@ public class PohonKinerjaRepository {
         else p.setParentId(parentIdVal);
         p.setNamaPohon(rs.getString("nama_pohon"));
         p.setKeterangan(rs.getString("keterangan"));
-        p.setTahun(rs.getString("tahun"));
+        p.setTahun(rs.getInt("tahun"));
         String jenisString = rs.getString("jenis_pohon");
         if (jenisString != null) p.setJenisPohon(JenisPohon.valueOf(jenisString));
         p.setLevelPohon(rs.getInt("level_pohon"));

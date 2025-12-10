@@ -21,7 +21,7 @@ public class TargetRepository {
             .indikatorId(rs.getLong("indikator_id"))
             .nilai(rs.getDouble("nilai"))
             .satuan(rs.getString("satuan"))
-            .tahun(rs.getString("tahun"))
+            .tahun(rs.getInt("tahun"))
             .build();
 
     public List<Target> findAll() {

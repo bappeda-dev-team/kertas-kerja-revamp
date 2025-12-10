@@ -76,6 +76,30 @@ public class PohonKinerjaService {
 
     @Transactional
     public PohonKinerjaDto.Response create(PohonKinerjaDto.Request request) {
+        if (request.jenisPohon().getLevel() != request.levelPohon()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Level Pohon tidak sesuai dengan Jenis Pohon. " +
+                            request.jenisPohon() + " harus level " + request.jenisPohon().getLevel());
+        }
+
+        if (request.parentId() != null) {
+            PohonKinerja parent = pohonKinerjaRepository.findById(request.parentId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Parent ID " + request.parentId() + " tidak ditemukan"));
+
+            int expectedLevel = parent.getLevelPohon() + 1;
+            if (request.levelPohon() != expectedLevel) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Hierarki salah. Parent jenis " + parent.getJenisPohon() +
+                                " (" + parent.getLevelPohon() + ") hanya boleh memiliki anak level " + expectedLevel);
+            }
+        } else {
+            if (request.levelPohon() != 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Pohon dengan level " + request.levelPohon() + " wajib memiliki Parent ID.");
+            }
+        }
+
         PohonKinerja entity = mapToEntity(request);
         PohonKinerja saved = pohonKinerjaRepository.save(entity);
         return mapToResponse(saved);
@@ -83,13 +107,19 @@ public class PohonKinerjaService {
 
     @Transactional
     public PohonKinerjaDto.Response update(Long id, PohonKinerjaDto.Request request) {
+        if (request.parentId() != null && request.parentId().equals(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Induk (Parent) tidak boleh diri sendiri. Itu ilegal!"
+            );
+        }
         PohonKinerja existing = pohonKinerjaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         existing.setParentId(request.parentId());
         existing.setNamaPohon(request.namaPohon());
         existing.setKeterangan(request.keterangan());
         existing.setTahun(request.tahun());
-        existing.setJenisPohon(JenisPohon.valueOf(request.jenisPohon()));
+        existing.setJenisPohon(request.jenisPohon());
         existing.setLevelPohon(request.levelPohon());
         existing.setKodeOpd(request.kodeOpd());
         existing.setKodePemda(request.kodePemda());
@@ -138,9 +168,16 @@ public class PohonKinerjaService {
 
     private PohonKinerjaDto.Response mapToResponse(PohonKinerja entity) {
         return new PohonKinerjaDto.Response(
-                entity.getId(), entity.getParentId(), entity.getNamaPohon(), entity.getKeterangan(),
-                entity.getTahun(), entity.getJenisPohon().name(), entity.getLevelPohon(),
-                entity.getKodeOpd(), entity.getKodePemda(), entity.getStatus()
+                entity.getId(),
+                entity.getParentId(),
+                entity.getNamaPohon(),
+                entity.getKeterangan(),
+                entity.getTahun(),
+                entity.getJenisPohon(),
+                entity.getLevelPohon(),
+                entity.getKodeOpd(),
+                entity.getKodePemda(),
+                entity.getStatus()
         );
     }
 
@@ -165,7 +202,7 @@ public class PohonKinerjaService {
                 .namaPohon(request.namaPohon())
                 .keterangan(request.keterangan())
                 .tahun(request.tahun())
-                .jenisPohon(JenisPohon.valueOf(request.jenisPohon()))
+                .jenisPohon(request.jenisPohon())
                 .levelPohon(request.levelPohon())
                 .kodeOpd(request.kodeOpd())
                 .kodePemda(request.kodePemda())
