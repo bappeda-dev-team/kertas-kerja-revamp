@@ -1,9 +1,7 @@
 package com.kertaskerja.id.KertasKerjaRevamp.dto;
 
 import com.kertaskerja.id.KertasKerjaRevamp.enums.JenisPohon;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.*;
 
 public class PohonKinerjaDto {
 
@@ -16,7 +14,6 @@ public class PohonKinerjaDto {
             String keterangan,
 
             @NotNull(message = "Tahun tidak boleh kosong")
-            @Pattern(regexp = "\\d{4}", message = "Format tahun harus 4 digit angka (YYYY)")
             Integer tahun,
 
             @NotNull(message = "Jenis pohon tidak boleh kosong (CONTOH: TEMATIK, STRATEGIC)")

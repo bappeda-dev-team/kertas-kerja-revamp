@@ -35,6 +35,17 @@ public class PohonKinerjaRepository {
         return p;
     };
 
+    public boolean existsById(Long id) {
+        String sql = "SELECT count(*) FROM pohon_kinerja WHERE id = :id";
+
+        Integer count = jdbcClient.sql(sql)
+                .param("id", id)
+                .query(Integer.class)
+                .single();
+
+        return count > 0;
+    }
+
     public List<PohonKinerja> findTreeNodes(Long rootId) {
         String sql = """
             WITH RECURSIVE hierarchy AS (

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.kertaskerja.id.KertasKerjaRevamp.repository.PohonKinerjaRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class IndikatorService {
 
     private final IndikatorRepository repository;
     private final TargetRepository targetRepository;
+    private final PohonKinerjaRepository pohonKinerjaRepository;
 
     public List<IndikatorDto.Response> findAll() {
         List<Indikator> indikators = repository.findAll();
@@ -62,6 +64,11 @@ public class IndikatorService {
 
     @Transactional
     public IndikatorDto.Response create(IndikatorDto.Request request) {
+        if (!pohonKinerjaRepository.existsById(request.pohonKinerjaId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Pohon Kinerja dengan ID " + request.pohonKinerjaId() + " tidak ditemukan");
+        }
+
         Indikator indikator = mapToEntity(request);
         Indikator savedIndikator = repository.save(indikator);
 

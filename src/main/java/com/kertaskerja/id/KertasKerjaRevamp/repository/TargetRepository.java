@@ -24,6 +24,17 @@ public class TargetRepository {
             .tahun(rs.getInt("tahun"))
             .build();
 
+    public Boolean existById(Long id){
+        String sql = "SELECT count(*) FROM target WHERE id = :id";
+
+        Integer count = jdbcClient.sql(sql)
+                .param("id", id)
+                .query(Integer.class)
+                .single();
+
+        return count > 0;
+    }
+
     public List<Target> findAll() {
         return jdbcClient.sql("SELECT * FROM target")
                 .query(rowMapper)

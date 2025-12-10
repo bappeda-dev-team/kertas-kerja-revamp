@@ -37,6 +37,17 @@ public class IndikatorRepository {
                 .optional();
     }
 
+    public boolean existsById(Long id) {
+        String sql = "SELECT COUNT(*) FROM indikator WHERE id = :id";
+
+        Integer count = jdbcClient.sql(sql)
+                .param("id", id)
+                .query(Integer.class)
+                .single();
+
+        return count > 0;
+    }
+
     public List<Indikator> findByPohonKinerjaIdIn(List<Long> pohonIds) {
         if (pohonIds == null || pohonIds.isEmpty()) {
             return List.of();

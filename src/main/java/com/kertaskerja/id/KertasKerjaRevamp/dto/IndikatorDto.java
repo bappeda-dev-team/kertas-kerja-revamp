@@ -17,7 +17,6 @@ public class IndikatorDto {
             String keterangan,
 
             @NotNull(message = "Tahun tidak boleh kosong")
-            @Pattern(regexp = "\\d{4}", message = "Format tahun harus 4 digit angka (YYYY)")
             Integer tahun
     ) {}
 
