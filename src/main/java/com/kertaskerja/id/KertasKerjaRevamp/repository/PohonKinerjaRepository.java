@@ -85,11 +85,6 @@ public class PohonKinerjaRepository {
                 .single();
     }
 
-    public List<PohonKinerja> findAll() {
-        String sql = "SELECT * FROM pohon_kinerja ORDER BY id";
-        return jdbcClient.sql(sql).query(pohonRowMapper).list();
-    }
-
     public Optional<PohonKinerja> findById(Long id) {
         String sql = "SELECT * FROM pohon_kinerja WHERE id = :id";
         return jdbcClient.sql(sql).param("id", id).query(pohonRowMapper).optional();

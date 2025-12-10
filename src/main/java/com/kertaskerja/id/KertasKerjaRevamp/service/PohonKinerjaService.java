@@ -206,7 +206,7 @@ public class PohonKinerjaService {
                 .levelPohon(request.levelPohon())
                 .kodeOpd(request.kodeOpd())
                 .kodePemda(request.kodePemda())
-                .status(request.status())
+                .status("DRAFT")
                 .build();
     }
 
