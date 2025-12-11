@@ -23,7 +23,7 @@ public class PohonKinerjaController {
     private final PohonKinerjaService service;
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Specific Tree Structure", description = "Retrieves the hierarchy starting from a specific node ID")
+    @Operation(summary = "Get Specific Tree Structure", description = "Retrieves the hierarchy starting from a specific tree ID")
     public ResponseEntity<ApiResponse<PohonTreeDto>> getTreeById(@PathVariable Long id) {
         PohonTreeDto treeData = service.getTreeById(id);
         return ResponseEntity.ok(ApiResponse.success(treeData, "Succesfully loaded tree data by Id"));
@@ -37,21 +37,21 @@ public class PohonKinerjaController {
     }
 
     @PostMapping
-    @Operation(summary = "Create New Node", description = "Creates a new performance tree node. Can include nested indicators and targets")
-    public ResponseEntity<ApiResponse<PohonKinerjaDto.Response>> create(@RequestBody @Valid PohonKinerjaDto.Request request) {
+    @Operation(summary = "Create New Tree", description = "Creates a new tree. Including nested indicators and targets")
+    public ResponseEntity<ApiResponse<PohonKinerjaDto.Response>> create(@RequestBody @Valid PohonKinerjaDto.CreateCompositeRequest request) {
         PohonKinerjaDto.Response data = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(data));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Node", description = "Updates an existing performance tree node")
+    @Operation(summary = "Update Node", description = "Updates an existing tree ")
     public ResponseEntity<ApiResponse<PohonKinerjaDto.Response>> update(@PathVariable Long id, @RequestBody @Valid PohonKinerjaDto.Request request) {
         PohonKinerjaDto.Response data = service.update(id, request);
         return ResponseEntity.ok(ApiResponse.updated(data));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete Node", description = "Deletes a performance tree node and all its descendants")
+    @Operation(summary = "Delete Node", description = "Deletes a tree and all its descendants")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.deleted());

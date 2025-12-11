@@ -75,7 +75,7 @@ public class PohonKinerjaService {
     }
 
     @Transactional
-    public PohonKinerjaDto.Response create(PohonKinerjaDto.Request request) {
+    public PohonKinerjaDto.Response create(PohonKinerjaDto.CreateCompositeRequest request) {
         if (request.jenisPohon().getLevel() != request.levelPohon()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Level Pohon tidak sesuai dengan Jenis Pohon. " +
@@ -100,9 +100,49 @@ public class PohonKinerjaService {
             }
         }
 
-        PohonKinerja entity = mapToEntity(request);
-        PohonKinerja saved = pohonKinerjaRepository.save(entity);
-        return mapToResponse(saved);
+        PohonKinerja pohonEntity = PohonKinerja.builder()
+                .parentId(request.parentId())
+                .namaPohon(request.namaPohon())
+                .keterangan(request.keterangan())
+                .tahun(request.tahun())
+                .jenisPohon(request.jenisPohon())
+                .levelPohon(request.levelPohon())
+                .kodeOpd(request.kodeOpd())
+                .kodePemda(request.kodePemda())
+                .status("DRAFT")
+                .build();
+
+        PohonKinerja savedPohon = pohonKinerjaRepository.save(pohonEntity);
+        Long idPohonBaru = savedPohon.getId();
+
+        if (request.indikators() != null) {
+            for (PohonKinerjaDto.IndikatorRequestItem indReq : request.indikators()) {
+                Indikator indikatorEntity = Indikator.builder()
+                        .pohonKinerjaId(idPohonBaru)
+                        .indikator(indReq.indikator())
+                        .keterangan(indReq.keterangan())
+                        .tahun(indReq.tahun())
+                        .build();
+
+                Indikator savedIndikator = indikatorRepository.save(indikatorEntity);
+                Long idIndikatorBaru = savedIndikator.getId();
+
+                if (indReq.targets() != null) {
+                    for (PohonKinerjaDto.TargetRequestItem targetReq : indReq.targets()) {
+                        Target targetEntity = Target.builder()
+                                .indikatorId(idIndikatorBaru)
+                                .nilai(targetReq.nilai())
+                                .satuan(targetReq.satuan())
+                                .tahun(targetReq.tahun())
+                                .build();
+
+                        targetRepository.save(targetEntity);
+                    }
+                }
+            }
+        }
+
+        return mapToResponse(savedPohon);
     }
 
     @Transactional

@@ -3,6 +3,8 @@ package com.kertaskerja.id.KertasKerjaRevamp.dto;
 import com.kertaskerja.id.KertasKerjaRevamp.enums.JenisPohon;
 import jakarta.validation.constraints.*;
 
+import java.util.List;
+
 public class PohonKinerjaDto {
 
     public record Request(
@@ -25,7 +27,8 @@ public class PohonKinerjaDto {
             String kodeOpd,
             String kodePemda,
             String status
-    ) {}
+    ) {
+    }
 
     public record Response(
             Long id,
@@ -38,5 +41,38 @@ public class PohonKinerjaDto {
             String kodeOpd,
             String kodePemda,
             String status
-    ) {}
+    ) {
+    }
+
+    // === DTO KHUSUS CREATE COMPOSITE ===
+    public record CreateCompositeRequest(
+            Long parentId,
+            @NotBlank String namaPohon,
+            String keterangan,
+            Integer tahun,
+            JenisPohon jenisPohon,
+            Integer levelPohon,
+            String kodeOpd,
+            String kodePemda,
+            String status,
+
+            List<IndikatorRequestItem> indikators
+    ) {
+    }
+
+    public record IndikatorRequestItem(
+            String indikator,
+            String keterangan,
+            Integer tahun,
+
+            List<TargetRequestItem> targets
+    ) {
+    }
+
+    public record TargetRequestItem(
+            Double nilai,
+            String satuan,
+            Integer tahun
+    ) {
+    }
 }
