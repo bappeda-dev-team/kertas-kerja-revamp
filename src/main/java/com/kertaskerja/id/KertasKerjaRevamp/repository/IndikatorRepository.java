@@ -115,4 +115,21 @@ public class IndikatorRepository {
                 .param("id", id)
                 .update();
     }
+
+    @Transactional
+    public void deleteAll(List<Indikator> indikators) {
+        if (indikators == null || indikators.isEmpty()) {
+            return;
+        }
+
+        List<Long> ids = indikators.stream()
+                .map(Indikator::getId)
+                .toList();
+
+        String sql = "DELETE FROM indikator WHERE id IN (:ids)";
+
+        jdbcClient.sql(sql)
+                .param("ids", ids)
+                .update();
+    }
 }

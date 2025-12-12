@@ -2,7 +2,6 @@ package com.kertaskerja.id.KertasKerjaRevamp.controller;
 
 import com.kertaskerja.id.KertasKerjaRevamp.dto.ApiResponse;
 import com.kertaskerja.id.KertasKerjaRevamp.dto.PohonKinerjaDto;
-import com.kertaskerja.id.KertasKerjaRevamp.dto.PohonTreeDto;
 import com.kertaskerja.id.KertasKerjaRevamp.service.PohonKinerjaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,34 +23,34 @@ public class PohonKinerjaController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get Specific Tree Structure", description = "Retrieves the hierarchy starting from a specific tree ID")
-    public ResponseEntity<ApiResponse<PohonTreeDto>> getTreeById(@PathVariable Long id) {
-        PohonTreeDto treeData = service.getTreeById(id);
+    public ResponseEntity<ApiResponse<PohonKinerjaDto.TreeResponse>> getTreeById(@PathVariable Long id) {
+        PohonKinerjaDto.TreeResponse treeData = service.getTreeById(id);
         return ResponseEntity.ok(ApiResponse.success(treeData, "Succesfully loaded tree data by Id"));
     }
 
     @GetMapping("/tematik")
     @Operation(summary = "Get All Tematik", description = "Retrieves all root level (Tematik) performance trees")
-    public ResponseEntity<ApiResponse<List<PohonKinerjaDto.Response>>> getTematik() {
-        List<PohonKinerjaDto.Response> data = service.findAllTematik();
+    public ResponseEntity<ApiResponse<List<PohonKinerjaDto.SimpleResponse>>> getTematik() {
+        List<PohonKinerjaDto.SimpleResponse> data = service.findAllTematik();
         return ResponseEntity.ok(ApiResponse.success(data, "Successfully loaded all tematik data"));
     }
 
     @PostMapping
     @Operation(summary = "Create New Tree", description = "Creates a new tree. Including nested indicators and targets")
-    public ResponseEntity<ApiResponse<PohonKinerjaDto.Response>> create(@RequestBody @Valid PohonKinerjaDto.CreateCompositeRequest request) {
-        PohonKinerjaDto.Response data = service.create(request);
+    public ResponseEntity<ApiResponse<PohonKinerjaDto.DetailResponse>> create(@RequestBody @Valid PohonKinerjaDto.Request request) {
+        PohonKinerjaDto.DetailResponse data = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(data));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Node", description = "Updates an existing tree ")
-    public ResponseEntity<ApiResponse<PohonKinerjaDto.Response>> update(@PathVariable Long id, @RequestBody @Valid PohonKinerjaDto.Request request) {
-        PohonKinerjaDto.Response data = service.update(id, request);
+    @Operation(summary = "Update Tree", description = "Updates an existing tree ")
+    public ResponseEntity<ApiResponse<PohonKinerjaDto.DetailResponse>> update(@PathVariable Long id, @RequestBody @Valid PohonKinerjaDto.Request request) {
+        PohonKinerjaDto.DetailResponse data = service.update(id, request);
         return ResponseEntity.ok(ApiResponse.updated(data));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete Node", description = "Deletes a tree and all its descendants")
+    @Operation(summary = "Delete Tree", description = "Deletes a tree and all its descendants")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.deleted());
