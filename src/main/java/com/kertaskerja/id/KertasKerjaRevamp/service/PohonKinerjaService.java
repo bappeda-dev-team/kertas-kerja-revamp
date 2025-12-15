@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -144,17 +145,39 @@ public class PohonKinerjaService {
 
     @Transactional
     public PohonKinerjaDto.DetailResponse update(Long id, PohonKinerjaDto.Request request) {
-        if (request.parentId() != null && request.parentId().equals(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Induk (Parent) tidak boleh diri sendiri. Itu ilegal!"
-            );
-        }
-
         PohonKinerja existing = pohonKinerjaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pohon tidak ditemukan"));
 
-        existing.setParentId(request.parentId());
+        if (!
+                Objects.equals(existing.getParentId(), request.parentId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Update Gagal: Parent ID tidak boleh diubah (Mutasi struktur dilarang).");
+        }
+
+        if (request.jenisPohon().getLevel() != request.levelPohon()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Level Pohon tidak sesuai dengan Jenis Pohon. " +
+                            request.jenisPohon() + " harus level " + request.jenisPohon().getLevel());
+        }
+
+        if (request.parentId() != null) {
+            PohonKinerja parent = pohonKinerjaRepository.findById(request.parentId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Parent ID " + request.parentId() + " tidak ditemukan"));
+
+            int expectedLevel = parent.getLevelPohon() + 1;
+            if (request.levelPohon() != expectedLevel) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Hierarki salah. Parent jenis " + parent.getJenisPohon() +
+                                " (" + parent.getLevelPohon() + ") hanya boleh memiliki anak level " + expectedLevel);
+            }
+        } else {
+            if (request.levelPohon() != 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Pohon dengan level " + request.levelPohon() + " wajib memiliki Parent ID.");
+            }
+        }
+
         existing.setNamaPohon(request.namaPohon());
         existing.setKeterangan(request.keterangan());
         existing.setTahun(request.tahun());
@@ -209,29 +232,20 @@ public class PohonKinerjaService {
         pohonKinerjaRepository.deleteById(id);
     }
 
-    // ===========================================
-    // FIX STARTS HERE
-    // ===========================================
-
     private Map<Long, PohonKinerjaDto.TreeResponse> buildNodeMap(List<PohonKinerja> pohonList, List<Indikator> indikatorList, List<Target> targetList) {
-        // 1. Group TARGET ENTITY berdasarkan Indikator ID
-        // (Kita group Entity-nya, bukan DTO-nya, supaya aman)
+
         Map<Long, List<Target>> targetsByIndikatorId = targetList.stream()
                 .collect(Collectors.groupingBy(Target::getIndikatorId));
 
-        // 2. Build Map IndikatorResponse
         Map<Long, List<PohonKinerjaDto.IndikatorResponse>> indikatorMap = new HashMap<>();
 
         for (Indikator ind : indikatorList) {
-            // Ambil list target entity milik indikator ini
             List<Target> myTargets = targetsByIndikatorId.getOrDefault(ind.getId(), new ArrayList<>());
 
-            // Map target entity ke DTO
             List<PohonKinerjaDto.TargetResponse> targetDtos = myTargets.stream()
                     .map(this::mapTargetToResponse)
                     .toList();
 
-            // Buat IndikatorResponse baru
             PohonKinerjaDto.IndikatorResponse indDto = new PohonKinerjaDto.IndikatorResponse(
                     ind.getId(),
                     ind.getIndikator(),
