@@ -85,11 +85,36 @@ public class PohonKinerjaService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "Parent ID " + request.parentId() + " tidak ditemukan"));
 
-            int expectedLevel = parent.getLevelPohon() + 1;
-            if (request.levelPohon() != expectedLevel) {
+            int parentLevel = parent.getLevelPohon();
+            int childLevel = request.levelPohon();
+            boolean isHierarchyValid = false;
+
+            switch (parentLevel) {
+                case 0:
+                    isHierarchyValid = (childLevel == 1 || childLevel == 4);
+                    break;
+                case 1:
+                    isHierarchyValid = (childLevel == 2 || childLevel == 4);
+                    break;
+                case 2:
+                    isHierarchyValid = (childLevel == 3 || childLevel == 4);
+                    break;
+                case 3:
+                    isHierarchyValid = (childLevel == 4);
+                    break;
+                case 4:
+                    isHierarchyValid = (childLevel == 5);
+                    break;
+                case 5:
+                    isHierarchyValid = (childLevel == 6);
+                    break;
+                default:
+            }
+
+            if (!isHierarchyValid) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Hierarki salah. Parent jenis " + parent.getJenisPohon() +
-                                " (" + parent.getLevelPohon() + ") hanya boleh memiliki anak level " + expectedLevel);
+                        "Hierarki salah. Parent level " + parentLevel + " (" + parent.getJenisPohon() +
+                                ") tidak diizinkan memiliki anak level " + childLevel + " (" + request.jenisPohon() + ").");
             }
         } else {
             if (request.levelPohon() != 0) {
@@ -148,8 +173,7 @@ public class PohonKinerjaService {
         PohonKinerja existing = pohonKinerjaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pohon tidak ditemukan"));
 
-        if (!
-                Objects.equals(existing.getParentId(), request.parentId())) {
+        if (!Objects.equals(existing.getParentId(), request.parentId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Update Gagal: Parent ID tidak boleh diubah (Mutasi struktur dilarang).");
         }
@@ -165,16 +189,59 @@ public class PohonKinerjaService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "Parent ID " + request.parentId() + " tidak ditemukan"));
 
-            int expectedLevel = parent.getLevelPohon() + 1;
-            if (request.levelPohon() != expectedLevel) {
+            int parentLevel = parent.getLevelPohon();
+            int currentLevel = request.levelPohon();
+            boolean isParentValid = false;
+
+            switch (parentLevel) {
+                case 0: isParentValid = (currentLevel == 1 || currentLevel == 4); break;
+                case 1: isParentValid = (currentLevel == 2 || currentLevel == 4); break;
+                case 2: isParentValid = (currentLevel == 3 || currentLevel == 4); break;
+                case 3: isParentValid = (currentLevel == 4); break;
+                case 4: isParentValid = (currentLevel == 5); break;
+                case 5: isParentValid = (currentLevel == 6); break;
+                default:
+            }
+
+            if (!isParentValid) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Hierarki salah. Parent jenis " + parent.getJenisPohon() +
-                                " (" + parent.getLevelPohon() + ") hanya boleh memiliki anak level " + expectedLevel);
+                        "Hierarki ke Atas salah. Parent level " + parentLevel + " (" + parent.getJenisPohon() +
+                                ") tidak diizinkan memiliki anak level " + currentLevel + " (" + request.jenisPohon() + ").");
             }
         } else {
             if (request.levelPohon() != 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Pohon dengan level " + request.levelPohon() + " wajib memiliki Parent ID.");
+            }
+        }
+
+        List<PohonKinerja> children = pohonKinerjaRepository.findByParentId(id);
+
+        if (!children.isEmpty()) {
+            int newLevelSelf = request.levelPohon();
+
+            for (PohonKinerja child : children) {
+                int childLevel = child.getLevelPohon();
+                boolean isChildValid = false;
+
+                switch (newLevelSelf) {
+                    case 0: isChildValid = (childLevel == 1 || childLevel == 4); break;
+                    case 1: isChildValid = (childLevel == 2 || childLevel == 4); break;
+                    case 2: isChildValid = (childLevel == 3 || childLevel == 4); break;
+                    case 3: isChildValid = (childLevel == 4); break;
+                    case 4: isChildValid = (childLevel == 5); break;
+                    case 5: isChildValid = (childLevel == 6); break;
+                    case 6:
+                        break;
+                    default: isChildValid = false;
+                }
+
+                if (!isChildValid) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Update Gagal: Perubahan level menjadi " + newLevelSelf + " (" + request.jenisPohon() +
+                                    ") konflik dengan Anak (ID: " + child.getId() + ") yang memiliki level " + childLevel +
+                                    ". Harap sesuaikan anak terlebih dahulu.");
+                }
             }
         }
 
@@ -190,7 +257,6 @@ public class PohonKinerjaService {
         pohonKinerjaRepository.save(existing);
 
         List<Indikator> oldIndikators = indikatorRepository.findByPohonKinerjaId(id);
-
         for (Indikator oldInd : oldIndikators) {
             targetRepository.deleteByIndikatorId(oldInd.getId());
         }

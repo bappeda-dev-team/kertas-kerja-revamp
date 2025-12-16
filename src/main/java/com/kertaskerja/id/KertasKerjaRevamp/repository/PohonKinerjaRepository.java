@@ -38,28 +38,22 @@ public class PohonKinerjaRepository {
     public boolean existsById(Long id) {
         String sql = "SELECT count(*) FROM pohon_kinerja WHERE id = :id";
 
-        Integer count = jdbcClient.sql(sql)
-                .param("id", id)
-                .query(Integer.class)
-                .single();
+        Integer count = jdbcClient.sql(sql).param("id", id).query(Integer.class).single();
 
         return count > 0;
     }
 
     public List<PohonKinerja> findTreeNodes(Long rootId) {
         String sql = """
-            WITH RECURSIVE hierarchy AS (
-                SELECT * FROM pohon_kinerja WHERE id = :rootId
-                UNION ALL
-                SELECT p.* FROM pohon_kinerja p
-                INNER JOIN hierarchy h ON p.parent_id = h.id
-            )
-            SELECT * FROM hierarchy
-        """;
-        return jdbcClient.sql(sql)
-                .param("rootId", rootId)
-                .query(pohonRowMapper)
-                .list();
+                    WITH RECURSIVE hierarchy AS (
+                        SELECT * FROM pohon_kinerja WHERE id = :rootId
+                        UNION ALL
+                        SELECT p.* FROM pohon_kinerja p
+                        INNER JOIN hierarchy h ON p.parent_id = h.id
+                    )
+                    SELECT * FROM hierarchy
+                """;
+        return jdbcClient.sql(sql).param("rootId", rootId).query(pohonRowMapper).list();
     }
 
     @Transactional
@@ -71,18 +65,7 @@ public class PohonKinerjaRepository {
                 (:parentId, :nama, :ket, :tahun, :jenis, :level, :opd, :pemda, :status)
                 RETURNING *
                 """;
-        return jdbcClient.sql(sql)
-                .param("parentId", pohon.getParentId())
-                .param("nama", pohon.getNamaPohon())
-                .param("ket", pohon.getKeterangan())
-                .param("tahun", pohon.getTahun())
-                .param("jenis", pohon.getJenisPohon().name())
-                .param("level", pohon.getLevelPohon())
-                .param("opd", pohon.getKodeOpd())
-                .param("pemda", pohon.getKodePemda())
-                .param("status", "DRAFT")
-                .query(pohonRowMapper)
-                .single();
+        return jdbcClient.sql(sql).param("parentId", pohon.getParentId()).param("nama", pohon.getNamaPohon()).param("ket", pohon.getKeterangan()).param("tahun", pohon.getTahun()).param("jenis", pohon.getJenisPohon().name()).param("level", pohon.getLevelPohon()).param("opd", pohon.getKodeOpd()).param("pemda", pohon.getKodePemda()).param("status", "DRAFT").query(pohonRowMapper).single();
     }
 
     public Optional<PohonKinerja> findById(Long id) {
@@ -92,7 +75,13 @@ public class PohonKinerjaRepository {
 
     public List<PohonKinerja> findAllTematik() {
         String sql = "SELECT * FROM pohon_kinerja WHERE jenis_pohon = 'TEMATIK' ORDER BY id";
+        return jdbcClient.sql(sql).query(pohonRowMapper).list();
+    }
+
+    public List<PohonKinerja> findByParentId(Long parentId) {
+        String sql = "SELECT * FROM pohon_kinerja WHERE parent_id = :parentId";
         return jdbcClient.sql(sql)
+                .param("parentId", parentId)
                 .query(pohonRowMapper)
                 .list();
     }
@@ -112,18 +101,7 @@ public class PohonKinerjaRepository {
                     status = :status
                 WHERE id = :id
                 """;
-        int rows = jdbcClient.sql(sql)
-                .param("parentId", pohon.getParentId())
-                .param("nama", pohon.getNamaPohon())
-                .param("ket", pohon.getKeterangan())
-                .param("tahun", pohon.getTahun())
-                .param("jenis", pohon.getJenisPohon().name())
-                .param("level", pohon.getLevelPohon())
-                .param("opd", pohon.getKodeOpd())
-                .param("pemda", pohon.getKodePemda())
-                .param("status", pohon.getStatus())
-                .param("id", pohon.getId())
-                .update();
+        int rows = jdbcClient.sql(sql).param("parentId", pohon.getParentId()).param("nama", pohon.getNamaPohon()).param("ket", pohon.getKeterangan()).param("tahun", pohon.getTahun()).param("jenis", pohon.getJenisPohon().name()).param("level", pohon.getLevelPohon()).param("opd", pohon.getKodeOpd()).param("pemda", pohon.getKodePemda()).param("status", pohon.getStatus()).param("id", pohon.getId()).update();
         if (rows == 0) throw new RuntimeException("Gagal update ID " + pohon.getId());
     }
 
