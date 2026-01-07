@@ -1,4 +1,4 @@
--- V5__reset_pohon_kinerja_sequence.sql
+-- V4__reset_pohon_kinerja_sequence.sql
 
 -- 1. Hapus semua data kotor/lama agar tidak konflik
 TRUNCATE TABLE pohon_kinerja RESTART IDENTITY CASCADE;

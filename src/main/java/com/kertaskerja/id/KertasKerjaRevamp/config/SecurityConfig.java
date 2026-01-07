@@ -34,20 +34,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-              .csrf(AbstractHttpConfigurer::disable)
-              .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-              .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/actuator/health", "/public/**").permitAll()
-                    .requestMatchers("/auth/**", "/pohon-kinerja/**", "/indikator/**", "/target/**").permitAll()
-                    .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").authenticated()
-                    .anyRequest().authenticated()
-              )
-              .httpBasic(httpBasic -> httpBasic
-                    .realmName("Swagger UI Access")
-                    .authenticationEntryPoint(customBasicAuthEntryPoint)
-              )
-              .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-              .build();
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health", "/public/**").permitAll()
+                        .requestMatchers("/auth/**", "/pohon-kinerja/**", "/indikator/**", "/target/**").permitAll()
+                        .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").authenticated()
+                        .anyRequest().authenticated()
+                )
+                .httpBasic(httpBasic -> httpBasic
+                        .realmName("Swagger UI Access")
+                        .authenticationEntryPoint(customBasicAuthEntryPoint)
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .build();
     }
 
     /**
@@ -57,9 +57,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
-              "http://localhost:3000",
-              "http://192.168.1.38:3000",
-              "https://kta-service.zeabur.app"
+                "http://localhost:3000",
+                "http://192.168.1.38:3000",
+                "https://kta-service.zeabur.app"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
@@ -77,10 +77,10 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails user = User.builder()
-              .username("kertaskerja")
-              .password(passwordEncoder().encode("katasandi"))
-              .roles("ADMIN")
-              .build();
+                .username("kertaskerja")
+                .password(passwordEncoder().encode("katasandi"))
+                .roles("ADMIN")
+                .build();
 
         return new InMemoryUserDetailsManager(user);
     }
