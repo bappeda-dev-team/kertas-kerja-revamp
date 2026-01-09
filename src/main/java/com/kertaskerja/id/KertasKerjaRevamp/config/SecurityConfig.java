@@ -1,10 +1,10 @@
 package com.kertaskerja.id.KertasKerjaRevamp.config;
 
-
 import com.kertaskerja.id.KertasKerjaRevamp.security.CustomBasicAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // ⚠️ JANGAN LUPA IMPORT INI
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -37,6 +37,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        // 🔥 TAMBAHAN PENTING: Izinkan semua request OPTIONS (Preflight)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         .requestMatchers("/actuator/health", "/public/**").permitAll()
                         .requestMatchers("/auth/**", "/pohon-kinerja/**", "/indikator/**", "/target/**").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").authenticated()
@@ -50,18 +53,20 @@ public class SecurityConfig {
                 .build();
     }
 
-    /**
-     * 🧩 CORS Configuration
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
+        // Pastikan URL frontend benar-benar http (bukan https) di localhost
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://192.168.1.38:3000",
                 "https://kta-service.zeabur.app"
         ));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // 🔥 Saran: Tambahkan PATCH jika ada kemungkinan dipakai
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
@@ -71,9 +76,6 @@ public class SecurityConfig {
         return source;
     }
 
-    /**
-     * 🧑 Basic Auth User untuk Swagger
-     */
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails user = User.builder()
@@ -85,9 +87,6 @@ public class SecurityConfig {
         return new InMemoryUserDetailsManager(user);
     }
 
-    /**
-     * 🔐 Password Encoder
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
