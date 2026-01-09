@@ -1,10 +1,26 @@
-FROM gradle:8.14.2-jdk21-ubi AS builder
-COPY --chown=gradle:gradle . /app
-WORKDIR /app
-RUN gradle bootJar
+# --- Stage 1: Build (PENTING: Pakai Image yang sudah ada JDK 21) ---
+FROM eclipse-temurin:21-jdk-jammy AS build
 
-# Runtime stage
-FROM openjdk:21-jdk-slim
 WORKDIR /app
-COPY --from=builder /app/build/libs/*.jar app.jar
-CMD ["java", "-jar", "app.jar"]
+
+# Copy semua file project ke dalam container
+COPY . .
+
+# Berikan izin eksekusi ke file gradlew
+RUN chmod +x gradlew
+
+# Build pakai WRAPPER (./gradlew), bukan 'gradle' biasa
+# Ini kunci biar dia pake Java yang ada di container ini
+RUN ./gradlew clean bootJar -x test
+
+# --- Stage 2: Run ---
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Ambil hasil build (perhatikan path build/libs/)
+COPY --from=build /app/build/libs/*.jar app.jar
+
+EXPOSE 8181
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
