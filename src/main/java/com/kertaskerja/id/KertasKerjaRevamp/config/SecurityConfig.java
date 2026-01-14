@@ -57,14 +57,13 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Pastikan URL frontend benar-benar http (bukan https) di localhost
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://192.168.1.38:3000",
-                "https://kta-service.zeabur.app"
+                "https://kta-service.zeabur.app",
+                "https://kertas-kerja-revamp.zeabur.app"
         ));
 
-        // 🔥 Saran: Tambahkan PATCH jika ada kemungkinan dipakai
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
         configuration.setAllowedHeaders(List.of("*"));
