@@ -117,6 +117,19 @@ public class IndikatorRepository {
     }
 
     @Transactional
+    public void deleteById(Long id) {
+        String sql = "DELETE FROM indikator WHERE id = :id";
+
+        int rows = jdbcClient.sql(sql)
+                .param("id", id)
+                .update();
+
+        if (rows == 0) {
+            throw new RuntimeException("Gagal delete Indikator. ID " + id + " tidak ditemukan.");
+        }
+    }
+
+    @Transactional
     public void deleteAll(List<Indikator> indikators) {
         if (indikators == null || indikators.isEmpty()) {
             return;

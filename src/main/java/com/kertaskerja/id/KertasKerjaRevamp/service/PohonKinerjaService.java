@@ -256,36 +256,108 @@ public class PohonKinerjaService {
 
         pohonKinerjaRepository.save(existing);
 
-        List<Indikator> oldIndikators = indikatorRepository.findByPohonKinerjaId(id);
-        for (Indikator oldInd : oldIndikators) {
-            targetRepository.deleteByIndikatorId(oldInd.getId());
-        }
-        indikatorRepository.deleteAll(oldIndikators);
+        // Get existing indikators
+        List<Indikator> existingIndikators = indikatorRepository.findByPohonKinerjaId(id);
+        List<Long> existingIndikatorIds = existingIndikators.stream()
+                .map(Indikator::getId)
+                .toList();
+
+        // Track which indikators are in the request
+        List<Long> requestIndikatorIds = new ArrayList<>();
 
         if (request.indikators() != null) {
             for (PohonKinerjaDto.IndikatorRequest indReq : request.indikators()) {
-                Indikator indikatorEntity = Indikator.builder()
-                        .pohonKinerjaId(existing.getId())
-                        .indikator(indReq.indikator())
-                        .keterangan(indReq.keterangan())
-                        .tahun(indReq.tahun())
-                        .build();
+                Indikator indikatorEntity;
+
+                if (indReq.id() != null) {
+                    // UPDATE existing indikator
+                    indikatorEntity = indikatorRepository.findById(indReq.id())
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                    "Indikator dengan ID " + indReq.id() + " tidak ditemukan"));
+
+                    indikatorEntity.setIndikator(indReq.indikator());
+                    indikatorEntity.setKeterangan(indReq.keterangan());
+                    indikatorEntity.setTahun(indReq.tahun());
+
+                    requestIndikatorIds.add(indReq.id());
+                } else {
+                    // CREATE new indikator
+                    indikatorEntity = Indikator.builder()
+                            .pohonKinerjaId(existing.getId())
+                            .indikator(indReq.indikator())
+                            .keterangan(indReq.keterangan())
+                            .tahun(indReq.tahun())
+                            .build();
+                }
 
                 Indikator savedIndikator = indikatorRepository.save(indikatorEntity);
-                Long idIndikatorBaru = savedIndikator.getId();
+                Long savedIndikatorId = savedIndikator.getId();
 
-                if (indReq.targets() != null) {
-                    for (PohonKinerjaDto.TargetRequest targetReq : indReq.targets()) {
-                        Target targetEntity = Target.builder()
-                                .indikatorId(idIndikatorBaru)
-                                .nilai(targetReq.nilai())
-                                .satuan(targetReq.satuan())
-                                .tahun(targetReq.tahun())
-                                .build();
-
-                        targetRepository.save(targetEntity);
-                    }
+                // Track newly created indikator to prevent deletion
+                if (indReq.id() == null) {
+                    requestIndikatorIds.add(savedIndikatorId);
                 }
+
+                // Handle targets for this indikator
+                if (indReq.targets() != null) {
+                    // Get existing targets for this indikator
+                    List<Target> existingTargets = targetRepository.findByIndikatorId(savedIndikatorId);
+                    List<Long> existingTargetIds = existingTargets.stream()
+                            .map(Target::getId)
+                            .toList();
+
+                    List<Long> requestTargetIds = new ArrayList<>();
+
+                    for (PohonKinerjaDto.TargetRequest targetReq : indReq.targets()) {
+                        Target targetEntity;
+
+                        if (targetReq.id() != null) {
+                            // UPDATE existing target
+                            targetEntity = targetRepository.findById(targetReq.id())
+                                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                            "Target dengan ID " + targetReq.id() + " tidak ditemukan"));
+
+                            targetEntity.setNilai(targetReq.nilai());
+                            targetEntity.setSatuan(targetReq.satuan());
+                            targetEntity.setTahun(targetReq.tahun());
+
+                            requestTargetIds.add(targetReq.id());
+                        } else {
+                            // CREATE new target
+                            targetEntity = Target.builder()
+                                    .indikatorId(savedIndikatorId)
+                                    .nilai(targetReq.nilai())
+                                    .satuan(targetReq.satuan())
+                                    .tahun(targetReq.tahun())
+                                    .build();
+                        }
+
+                        Target savedTarget = targetRepository.save(targetEntity);
+
+                        // Track newly created target to prevent deletion
+                        if (targetReq.id() == null) {
+                            requestTargetIds.add(savedTarget.getId());
+                        }
+                    }
+
+                    // Delete targets that are no longer in the request
+                    for (Long existingTargetId : existingTargetIds) {
+                        if (!requestTargetIds.contains(existingTargetId)) {
+                            targetRepository.deleteById(existingTargetId);
+                        }
+                    }
+                } else {
+                    // If no targets in request, delete all existing targets for this indikator
+                    targetRepository.deleteByIndikatorId(savedIndikatorId);
+                }
+            }
+        }
+
+        // Delete indikators that are no longer in the request
+        for (Long existingIndikatorId : existingIndikatorIds) {
+            if (!requestIndikatorIds.contains(existingIndikatorId)) {
+                targetRepository.deleteByIndikatorId(existingIndikatorId);
+                indikatorRepository.deleteById(existingIndikatorId);
             }
         }
 

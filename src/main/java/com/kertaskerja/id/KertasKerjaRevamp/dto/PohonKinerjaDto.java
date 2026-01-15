@@ -99,6 +99,7 @@ public class PohonKinerjaDto {
     // ==========================================
 
     public record IndikatorRequest(
+            Long id,  // ADD THIS - null for new, populated for existing
             String indikator,
             String keterangan,
             Integer tahun,
@@ -106,6 +107,7 @@ public class PohonKinerjaDto {
     ) {}
 
     public record TargetRequest(
+            Long id,  // ADD THIS - null for new, populated for existing
             Double nilai,
             String satuan,
             Integer tahun

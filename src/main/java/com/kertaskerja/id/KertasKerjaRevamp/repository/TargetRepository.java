@@ -106,6 +106,19 @@ public class TargetRepository {
     }
 
     @Transactional
+    public void deleteById(Long id) {
+        String sql = "DELETE FROM target WHERE id = :id";
+
+        int rows = jdbcClient.sql(sql)
+                .param("id", id)
+                .update();
+
+        if (rows == 0) {
+            throw new RuntimeException("Gagal delete Target. ID " + id + " tidak ditemukan.");
+        }
+    }
+
+    @Transactional
     public void deleteByIndikatorId(Long indikatorId) {
         jdbcClient.sql("DELETE FROM target WHERE indikator_id = :indikatorId")
                 .param("indikatorId", indikatorId)
