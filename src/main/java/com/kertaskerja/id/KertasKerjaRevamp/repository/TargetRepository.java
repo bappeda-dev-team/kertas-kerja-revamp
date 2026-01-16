@@ -37,6 +37,17 @@ public class TargetRepository {
                 .optional();
     }
 
+    public boolean existsById(Long id) {
+        String sql = "SELECT COUNT(*) FROM target WHERE id = :id";
+
+        Integer count = jdbcClient.sql(sql)
+                .param("id", id)
+                .query(Integer.class)
+                .single();
+
+        return count > 0;
+    }
+
     public List<Target> findByIndikatorIdIn(List<Long> indikatorIds) {
         if (indikatorIds == null || indikatorIds.isEmpty()) {
             return List.of();
@@ -59,19 +70,27 @@ public class TargetRepository {
 
     @Transactional
     public Target save(Target target) {
-        String sql = """
-                INSERT INTO target (indikator_id, nilai, satuan, tahun)
-                VALUES (:indikatorId, :nilai, :satuan, :tahun)
-                RETURNING *
-                """;
+        // Check if this is an update or insert
+        if (target.getId() != null && existsById(target.getId())) {
+            // UPDATE existing record
+            update(target);
+            return target;
+        } else {
+            // INSERT new record
+            String sql = """
+                    INSERT INTO target (indikator_id, nilai, satuan, tahun)
+                    VALUES (:indikatorId, :nilai, :satuan, :tahun)
+                    RETURNING *
+                    """;
 
-        return jdbcClient.sql(sql)
-                .param("indikatorId", target.getIndikatorId())
-                .param("nilai", target.getNilai())
-                .param("satuan", target.getSatuan())
-                .param("tahun", target.getTahun())
-                .query(rowMapper)
-                .single();
+            return jdbcClient.sql(sql)
+                    .param("indikatorId", target.getIndikatorId())
+                    .param("nilai", target.getNilai())
+                    .param("satuan", target.getSatuan())
+                    .param("tahun", target.getTahun())
+                    .query(rowMapper)
+                    .single();
+        }
     }
 
     @Transactional

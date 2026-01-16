@@ -58,14 +58,30 @@ public class PohonKinerjaRepository {
 
     @Transactional
     public PohonKinerja save(PohonKinerja pohon) {
-        String sql = """
-                INSERT INTO pohon_kinerja 
-                (parent_id, nama_pohon, keterangan, tahun, jenis_pohon, level_pohon, kode_opd, kode_pemda, status)
-                VALUES 
-                (:parentId, :nama, :ket, :tahun, :jenis, :level, :opd, :pemda, :status)
-                RETURNING *
-                """;
-        return jdbcClient.sql(sql).param("parentId", pohon.getParentId()).param("nama", pohon.getNamaPohon()).param("ket", pohon.getKeterangan()).param("tahun", pohon.getTahun()).param("jenis", pohon.getJenisPohon().name()).param("level", pohon.getLevelPohon()).param("opd", pohon.getKodeOpd()).param("pemda", pohon.getKodePemda()).param("status", "DRAFT").query(pohonRowMapper).single();
+        if (pohon.getId() != null && existsById(pohon.getId())) {
+            update(pohon);
+            return pohon;
+        } else {
+            String sql = """
+                    INSERT INTO pohon_kinerja 
+                    (parent_id, nama_pohon, keterangan, tahun, jenis_pohon, level_pohon, kode_opd, kode_pemda, status)
+                    VALUES 
+                    (:parentId, :nama, :ket, :tahun, :jenis, :level, :opd, :pemda, :status)
+                    RETURNING *
+                    """;
+            return jdbcClient.sql(sql)
+                    .param("parentId", pohon.getParentId())
+                    .param("nama", pohon.getNamaPohon())
+                    .param("ket", pohon.getKeterangan())
+                    .param("tahun", pohon.getTahun())
+                    .param("jenis", pohon.getJenisPohon().name())
+                    .param("level", pohon.getLevelPohon())
+                    .param("opd", pohon.getKodeOpd())
+                    .param("pemda", pohon.getKodePemda())
+                    .param("status", "DRAFT")
+                    .query(pohonRowMapper)
+                    .single();
+        }
     }
 
     public Optional<PohonKinerja> findById(Long id) {
@@ -101,7 +117,18 @@ public class PohonKinerjaRepository {
                     status = :status
                 WHERE id = :id
                 """;
-        int rows = jdbcClient.sql(sql).param("parentId", pohon.getParentId()).param("nama", pohon.getNamaPohon()).param("ket", pohon.getKeterangan()).param("tahun", pohon.getTahun()).param("jenis", pohon.getJenisPohon().name()).param("level", pohon.getLevelPohon()).param("opd", pohon.getKodeOpd()).param("pemda", pohon.getKodePemda()).param("status", pohon.getStatus()).param("id", pohon.getId()).update();
+        int rows = jdbcClient.sql(sql)
+                .param("parentId", pohon.getParentId())
+                .param("nama", pohon.getNamaPohon())
+                .param("ket", pohon.getKeterangan())
+                .param("tahun", pohon.getTahun())
+                .param("jenis", pohon.getJenisPohon().name())
+                .param("level", pohon.getLevelPohon())
+                .param("opd", pohon.getKodeOpd())
+                .param("pemda", pohon.getKodePemda())
+                .param("status", pohon.getStatus())
+                .param("id", pohon.getId())
+                .update();
         if (rows == 0) throw new RuntimeException("Gagal update ID " + pohon.getId());
     }
 

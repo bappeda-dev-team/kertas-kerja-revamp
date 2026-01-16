@@ -70,19 +70,27 @@ public class IndikatorRepository {
 
     @Transactional
     public Indikator save(Indikator indikator) {
-        String sql = """
-                INSERT INTO indikator (pohon_kinerja_id, indikator, keterangan, tahun)
-                VALUES (:pohonKinerjaId, :indikator, :ket, :tahun)
-                RETURNING *
-                """;
+        // Check if this is an update or insert
+        if (indikator.getId() != null && existsById(indikator.getId())) {
+            // UPDATE existing record
+            update(indikator);
+            return indikator;
+        } else {
+            // INSERT new record
+            String sql = """
+                    INSERT INTO indikator (pohon_kinerja_id, indikator, keterangan, tahun)
+                    VALUES (:pohonKinerjaId, :indikator, :ket, :tahun)
+                    RETURNING *
+                    """;
 
-        return jdbcClient.sql(sql)
-                .param("pohonKinerjaId", indikator.getPohonKinerjaId())
-                .param("indikator", indikator.getIndikator())
-                .param("ket", indikator.getKeterangan())
-                .param("tahun", indikator.getTahun())
-                .query(rowMapper)
-                .single();
+            return jdbcClient.sql(sql)
+                    .param("pohonKinerjaId", indikator.getPohonKinerjaId())
+                    .param("indikator", indikator.getIndikator())
+                    .param("ket", indikator.getKeterangan())
+                    .param("tahun", indikator.getTahun())
+                    .query(rowMapper)
+                    .single();
+        }
     }
 
     @Transactional
@@ -129,20 +137,20 @@ public class IndikatorRepository {
         }
     }
 
-    @Transactional
-    public void deleteAll(List<Indikator> indikators) {
-        if (indikators == null || indikators.isEmpty()) {
-            return;
-        }
-
-        List<Long> ids = indikators.stream()
-                .map(Indikator::getId)
-                .toList();
-
-        String sql = "DELETE FROM indikator WHERE id IN (:ids)";
-
-        jdbcClient.sql(sql)
-                .param("ids", ids)
-                .update();
-    }
+//    @Transactional
+//    public void deleteAll(List<Indikator> indikators) {
+//        if (indikators == null || indikators.isEmpty()) {
+//            return;
+//        }
+//
+//        List<Long> ids = indikators.stream()
+//                .map(Indikator::getId)
+//                .toList();
+//
+//        String sql = "DELETE FROM indikator WHERE id IN (:ids)";
+//
+//        jdbcClient.sql(sql)
+//                .param("ids", ids)
+//                .update();
+//    }
 }
