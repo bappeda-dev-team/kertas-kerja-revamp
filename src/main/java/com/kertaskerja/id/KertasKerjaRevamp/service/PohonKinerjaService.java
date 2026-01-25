@@ -14,12 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -33,217 +29,82 @@ public class PohonKinerjaService {
         PohonKinerja nodeCheck = pohonKinerjaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pohon Kinerja tidak ditemukan"));
 
-        boolean isRoot = nodeCheck.getParentId() == null
-                && nodeCheck.getLevelPohon() == 0
-                && nodeCheck.getJenisPohon() == JenisPohon.TEMATIK;
-
-        if (!isRoot) {
+        if (nodeCheck.getParentId() != null || nodeCheck.getLevelPohon() != 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID " + id + " bukan id TEMATIK (Level 0).");
         }
 
         List<PohonKinerja> specificTreeNodes = pohonKinerjaRepository.findTreeNodes(id);
-
-        List<Long> treeIds = specificTreeNodes.stream()
-                .map(PohonKinerja::getId)
-                .toList();
-
-        List<Indikator> relevantIndikators = indikatorRepository.findByPohonKinerjaIdIn(treeIds);
-
-        List<Long> indIds = relevantIndikators.stream()
-                .map(Indikator::getId)
-                .toList();
-
-        List<Target> relevantTargets = targetRepository.findByIndikatorIdIn(indIds);
-
-        Map<Long, PohonKinerjaDto.TreeResponse> nodeMap = buildNodeMap(specificTreeNodes, relevantIndikators, relevantTargets);
-
+        Map<Long, PohonKinerjaDto.TreeResponse> nodeMap = buildNodeMapFromEntities(specificTreeNodes);
         PohonKinerjaDto.TreeResponse rootNode = nodeMap.get(id);
 
         if (rootNode != null) {
             buildHierarchy(rootNode, nodeMap);
         }
-
         return rootNode;
+    }
+
+    public PohonKinerjaDto.OpdTreeResponse getOpdTreeByKodeOpdAndTahun(String kodeOpd, Integer tahun) {
+        List<PohonKinerja> allOpdNodes = pohonKinerjaRepository.findAllByKodeOpdAndTahun(kodeOpd, tahun);
+
+        if (allOpdNodes.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Data tidak ditemukan");
+        }
+
+        Map<Long, PohonKinerjaDto.TreeResponse> nodeMap = buildNodeMapFromEntities(allOpdNodes);
+        List<PohonKinerjaDto.TreeResponse> roots = allOpdNodes.stream()
+                .filter(p -> p.getParentId() == null && p.getLevelPohon() == 0)
+                .map(p -> nodeMap.get(p.getId()))
+                .filter(Objects::nonNull)
+                .toList();
+
+        for (PohonKinerjaDto.TreeResponse root : roots) {
+            buildHierarchy(root, nodeMap);
+        }
+
+        return PohonKinerjaDto.OpdTreeResponse.builder()
+                .kodeOpd(kodeOpd)
+                .tahun(tahun)
+                .roots(roots)
+                .build();
+    }
+
+    public List<PohonKinerjaDto.TreeResponse> getStrategicListByKodeOpdAndTahun(String kodeOpd, Integer tahun) {
+        return pohonKinerjaRepository.findRootsByKodeOpdAndTahun(kodeOpd, tahun)
+                .stream().map(this::mapToTreeDto).toList();
     }
 
     public List<PohonKinerjaDto.SimpleResponse> findAllTematik() {
         return pohonKinerjaRepository.findAllTematik().stream()
-                .map(this::mapToSimpleResponse)
-                .toList();
+                .map(this::mapToSimpleResponse).toList();
     }
 
     @Transactional
     public PohonKinerjaDto.DetailResponse create(PohonKinerjaDto.Request request) {
-        if (request.jenisPohon().getLevel() != request.levelPohon()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Level Pohon tidak sesuai dengan Jenis Pohon. " +
-                            request.jenisPohon() + " harus level " + request.jenisPohon().getLevel());
-        }
+        validateBusinessRules(request);
 
-        if (request.parentId() != null) {
-            PohonKinerja parent = pohonKinerjaRepository.findById(request.parentId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Parent ID " + request.parentId() + " tidak ditemukan"));
+        PohonKinerja entity = PohonKinerja.builder()
+                .parentId(request.parentId()).namaPohon(request.namaPohon())
+                .keterangan(request.keterangan()).tahun(request.tahun())
+                .jenisPohon(request.jenisPohon()).levelPohon(request.levelPohon())
+                .kodeOpd(request.kodeOpd()).kodePemda(request.kodePemda())
+                .status("DRAFT").build();
 
-            int parentLevel = parent.getLevelPohon();
-            int childLevel = request.levelPohon();
-            boolean isHierarchyValid = false;
-
-            switch (parentLevel) {
-                case 0:
-                    isHierarchyValid = (childLevel == 1 || childLevel == 4);
-                    break;
-                case 1:
-                    isHierarchyValid = (childLevel == 2 || childLevel == 4);
-                    break;
-                case 2:
-                    isHierarchyValid = (childLevel == 3 || childLevel == 4);
-                    break;
-                case 3:
-                    isHierarchyValid = (childLevel == 4);
-                    break;
-                case 4:
-                    isHierarchyValid = (childLevel == 5);
-                    break;
-                case 5:
-                    isHierarchyValid = (childLevel == 6);
-                    break;
-                default:
-            }
-
-            if (!isHierarchyValid) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Hierarki salah. Parent level " + parentLevel + " (" + parent.getJenisPohon() +
-                                ") tidak diizinkan memiliki anak level " + childLevel + " (" + request.jenisPohon() + ").");
-            }
-        } else {
-            if (request.levelPohon() != 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Pohon dengan level " + request.levelPohon() + " wajib memiliki Parent ID.");
-            }
-        }
-
-        PohonKinerja pohonEntity = PohonKinerja.builder()
-                .parentId(request.parentId())
-                .namaPohon(request.namaPohon())
-                .keterangan(request.keterangan())
-                .tahun(request.tahun())
-                .jenisPohon(request.jenisPohon())
-                .levelPohon(request.levelPohon())
-                .kodeOpd(request.kodeOpd())
-                .kodePemda(request.kodePemda())
-                .status("DRAFT")
-                .build();
-
-        PohonKinerja savedPohon = pohonKinerjaRepository.save(pohonEntity);
-        Long idPohonBaru = savedPohon.getId();
-
-        if (request.indikators() != null) {
-            for (PohonKinerjaDto.IndikatorRequest indReq : request.indikators()) {
-                Indikator indikatorEntity = Indikator.builder()
-                        .pohonKinerjaId(idPohonBaru)
-                        .indikator(indReq.indikator())
-                        .keterangan(indReq.keterangan())
-                        .tahun(indReq.tahun())
-                        .build();
-
-                Indikator savedIndikator = indikatorRepository.save(indikatorEntity);
-                Long idIndikatorBaru = savedIndikator.getId();
-
-                if (indReq.targets() != null) {
-                    for (PohonKinerjaDto.TargetRequest targetReq : indReq.targets()) {
-                        Target targetEntity = Target.builder()
-                                .indikatorId(idIndikatorBaru)
-                                .nilai(targetReq.nilai())
-                                .satuan(targetReq.satuan())
-                                .tahun(targetReq.tahun())
-                                .build();
-
-                        targetRepository.save(targetEntity);
-                    }
-                }
-            }
-        }
-
-        return mapToResponse(savedPohon);
+        PohonKinerja saved = pohonKinerjaRepository.save(entity);
+        saveIndikatorsAndTargets(saved.getId(), request.indikators());
+        return mapToDetailResponse(saved);
     }
 
     @Transactional
     public PohonKinerjaDto.DetailResponse update(Long id, PohonKinerjaDto.Request request) {
         PohonKinerja existing = pohonKinerjaRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pohon tidak ditemukan"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
         if (!Objects.equals(existing.getParentId(), request.parentId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Update Gagal: Parent ID tidak boleh diubah (Mutasi struktur dilarang).");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mutasi struktur dilarang");
         }
 
-        if (request.jenisPohon().getLevel() != request.levelPohon()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Level Pohon tidak sesuai dengan Jenis Pohon. " +
-                            request.jenisPohon() + " harus level " + request.jenisPohon().getLevel());
-        }
-
-        if (request.parentId() != null) {
-            PohonKinerja parent = pohonKinerjaRepository.findById(request.parentId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Parent ID " + request.parentId() + " tidak ditemukan"));
-
-            int parentLevel = parent.getLevelPohon();
-            int currentLevel = request.levelPohon();
-            boolean isParentValid = false;
-
-            switch (parentLevel) {
-                case 0: isParentValid = (currentLevel == 1 || currentLevel == 4); break;
-                case 1: isParentValid = (currentLevel == 2 || currentLevel == 4); break;
-                case 2: isParentValid = (currentLevel == 3 || currentLevel == 4); break;
-                case 3: isParentValid = (currentLevel == 4); break;
-                case 4: isParentValid = (currentLevel == 5); break;
-                case 5: isParentValid = (currentLevel == 6); break;
-                default:
-            }
-
-            if (!isParentValid) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Hierarki ke Atas salah. Parent level " + parentLevel + " (" + parent.getJenisPohon() +
-                                ") tidak diizinkan memiliki anak level " + currentLevel + " (" + request.jenisPohon() + ").");
-            }
-        } else {
-            if (request.levelPohon() != 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Pohon dengan level " + request.levelPohon() + " wajib memiliki Parent ID.");
-            }
-        }
-
-        List<PohonKinerja> children = pohonKinerjaRepository.findByParentId(id);
-
-        if (!children.isEmpty()) {
-            int newLevelSelf = request.levelPohon();
-
-            for (PohonKinerja child : children) {
-                int childLevel = child.getLevelPohon();
-                boolean isChildValid = false;
-
-                switch (newLevelSelf) {
-                    case 0: isChildValid = (childLevel == 1 || childLevel == 4); break;
-                    case 1: isChildValid = (childLevel == 2 || childLevel == 4); break;
-                    case 2: isChildValid = (childLevel == 3 || childLevel == 4); break;
-                    case 3: isChildValid = (childLevel == 4); break;
-                    case 4: isChildValid = (childLevel == 5); break;
-                    case 5: isChildValid = (childLevel == 6); break;
-                    case 6:
-                        break;
-                    default: isChildValid = false;
-                }
-
-                if (!isChildValid) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Update Gagal: Perubahan level menjadi " + newLevelSelf + " (" + request.jenisPohon() +
-                                    ") konflik dengan Anak (ID: " + child.getId() + ") yang memiliki level " + childLevel +
-                                    ". Harap sesuaikan anak terlebih dahulu.");
-                }
-            }
-        }
+        validateBusinessRules(request);
+        validateChildrenConsistency(id, request);
 
         existing.setNamaPohon(request.namaPohon());
         existing.setKeterangan(request.keterangan());
@@ -255,244 +116,142 @@ public class PohonKinerjaService {
         existing.setStatus(request.status());
 
         pohonKinerjaRepository.save(existing);
-
-        // Get existing indikators
-        List<Indikator> existingIndikators = indikatorRepository.findByPohonKinerjaId(id);
-        List<Long> existingIndikatorIds = existingIndikators.stream()
-                .map(Indikator::getId)
-                .toList();
-
-        // Track which indikators are in the request
-        List<Long> requestIndikatorIds = new ArrayList<>();
-
-        if (request.indikators() != null) {
-            for (PohonKinerjaDto.IndikatorRequest indReq : request.indikators()) {
-                Indikator indikatorEntity;
-
-                if (indReq.id() != null) {
-                    // UPDATE existing indikator
-                    indikatorEntity = indikatorRepository.findById(indReq.id())
-                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                    "Indikator dengan ID " + indReq.id() + " tidak ditemukan"));
-
-                    indikatorEntity.setIndikator(indReq.indikator());
-                    indikatorEntity.setKeterangan(indReq.keterangan());
-                    indikatorEntity.setTahun(indReq.tahun());
-
-                    requestIndikatorIds.add(indReq.id());
-                } else {
-                    // CREATE new indikator
-                    indikatorEntity = Indikator.builder()
-                            .pohonKinerjaId(existing.getId())
-                            .indikator(indReq.indikator())
-                            .keterangan(indReq.keterangan())
-                            .tahun(indReq.tahun())
-                            .build();
-                }
-
-                Indikator savedIndikator = indikatorRepository.save(indikatorEntity);
-                Long savedIndikatorId = savedIndikator.getId();
-
-                // Track newly created indikator to prevent deletion
-                if (indReq.id() == null) {
-                    requestIndikatorIds.add(savedIndikatorId);
-                }
-
-                // Handle targets for this indikator
-                if (indReq.targets() != null) {
-                    // Get existing targets for this indikator
-                    List<Target> existingTargets = targetRepository.findByIndikatorId(savedIndikatorId);
-                    List<Long> existingTargetIds = existingTargets.stream()
-                            .map(Target::getId)
-                            .toList();
-
-                    List<Long> requestTargetIds = new ArrayList<>();
-
-                    for (PohonKinerjaDto.TargetRequest targetReq : indReq.targets()) {
-                        Target targetEntity;
-
-                        if (targetReq.id() != null) {
-                            // UPDATE existing target
-                            targetEntity = targetRepository.findById(targetReq.id())
-                                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                            "Target dengan ID " + targetReq.id() + " tidak ditemukan"));
-
-                            targetEntity.setNilai(targetReq.nilai());
-                            targetEntity.setSatuan(targetReq.satuan());
-                            targetEntity.setTahun(targetReq.tahun());
-
-                            requestTargetIds.add(targetReq.id());
-                        } else {
-                            // CREATE new target
-                            targetEntity = Target.builder()
-                                    .indikatorId(savedIndikatorId)
-                                    .nilai(targetReq.nilai())
-                                    .satuan(targetReq.satuan())
-                                    .tahun(targetReq.tahun())
-                                    .build();
-                        }
-
-                        Target savedTarget = targetRepository.save(targetEntity);
-
-                        // Track newly created target to prevent deletion
-                        if (targetReq.id() == null) {
-                            requestTargetIds.add(savedTarget.getId());
-                        }
-                    }
-
-                    // Delete targets that are no longer in the request
-                    for (Long existingTargetId : existingTargetIds) {
-                        if (!requestTargetIds.contains(existingTargetId)) {
-                            targetRepository.deleteById(existingTargetId);
-                        }
-                    }
-                } else {
-                    // If no targets in request, delete all existing targets for this indikator
-                    targetRepository.deleteByIndikatorId(savedIndikatorId);
-                }
-            }
-        }
-
-        // Delete indikators that are no longer in the request
-        for (Long existingIndikatorId : existingIndikatorIds) {
-            if (!requestIndikatorIds.contains(existingIndikatorId)) {
-                targetRepository.deleteByIndikatorId(existingIndikatorId);
-                indikatorRepository.deleteById(existingIndikatorId);
-            }
-        }
-
-        return mapToResponse(existing);
+        syncIndikators(existing.getId(), request.indikators());
+        return mapToDetailResponse(existing);
     }
 
     @Transactional
     public void delete(Long id) {
-        pohonKinerjaRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!pohonKinerjaRepository.existsById(id)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         pohonKinerjaRepository.deleteById(id);
     }
 
-    private Map<Long, PohonKinerjaDto.TreeResponse> buildNodeMap(List<PohonKinerja> pohonList, List<Indikator> indikatorList, List<Target> targetList) {
+    private Map<Long, PohonKinerjaDto.TreeResponse> buildNodeMapFromEntities(List<PohonKinerja> nodes) {
+        List<Long> ids = nodes.stream().map(PohonKinerja::getId).toList();
+        List<Indikator> indikators = indikatorRepository.findByPohonKinerjaIdIn(ids);
+        List<Long> indIds = indikators.stream().map(Indikator::getId).toList();
+        List<Target> targets = indIds.isEmpty() ? Collections.emptyList() : targetRepository.findByIndikatorIdIn(indIds);
 
-        Map<Long, List<Target>> targetsByIndikatorId = targetList.stream()
-                .collect(Collectors.groupingBy(Target::getIndikatorId));
+        Map<Long, List<Target>> targetsByIndId = targets.stream().collect(Collectors.groupingBy(Target::getIndikatorId));
+        Map<Long, List<PohonKinerjaDto.IndikatorResponse>> indMapByPohonId = new HashMap<>();
 
-        Map<Long, List<PohonKinerjaDto.IndikatorResponse>> indikatorMap = new HashMap<>();
+        for (Indikator ind : indikators) {
+            List<PohonKinerjaDto.TargetResponse> tDtos = targetsByIndId.getOrDefault(ind.getId(), Collections.emptyList())
+                    .stream().map(t -> new PohonKinerjaDto.TargetResponse(t.getId(), t.getNilai(), t.getSatuan(), t.getTahun())).toList();
 
-        for (Indikator ind : indikatorList) {
-            List<Target> myTargets = targetsByIndikatorId.getOrDefault(ind.getId(), new ArrayList<>());
-
-            List<PohonKinerjaDto.TargetResponse> targetDtos = myTargets.stream()
-                    .map(this::mapTargetToResponse)
-                    .toList();
-
-            PohonKinerjaDto.IndikatorResponse indDto = new PohonKinerjaDto.IndikatorResponse(
-                    ind.getId(),
-                    ind.getIndikator(),
-                    ind.getKeterangan(),
-                    ind.getTahun(),
-                    targetDtos
-            );
-
-            // Masukkan ke map, key-nya adalah PohonKinerjaId
-            indikatorMap.computeIfAbsent(ind.getPohonKinerjaId(), k -> new ArrayList<>()).add(indDto);
+            indMapByPohonId.computeIfAbsent(ind.getPohonKinerjaId(), k -> new ArrayList<>())
+                    .add(new PohonKinerjaDto.IndikatorResponse(ind.getId(), ind.getIndikator(), ind.getKeterangan(), ind.getTahun(), tDtos));
         }
 
-        // 3. Build Node Map
         Map<Long, PohonKinerjaDto.TreeResponse> nodeMap = new HashMap<>();
-        for (PohonKinerja p : pohonList) {
+        for (PohonKinerja p : nodes) {
             PohonKinerjaDto.TreeResponse dto = mapToTreeDto(p);
-
-            // Sekarang tipenya sudah cocok (sama-sama List<PohonKinerjaDto.IndikatorResponse>)
-            if (indikatorMap.containsKey(p.getId())) {
-                dto.setIndikator(indikatorMap.get(p.getId()));
-            }
+            dto.setIndikator(indMapByPohonId.getOrDefault(p.getId(), new ArrayList<>()));
             nodeMap.put(p.getId(), dto);
         }
         return nodeMap;
     }
 
-    // --- Helper Mappers yang sudah disesuaikan ---
-
-    private PohonKinerjaDto.TargetResponse mapTargetToResponse(Target entity) {
-        return new PohonKinerjaDto.TargetResponse(
-                entity.getId(),
-                entity.getNilai(),
-                entity.getSatuan(),
-                entity.getTahun()
-        );
-    }
-
-    private PohonKinerjaDto.SimpleResponse mapToSimpleResponse(PohonKinerja entity) {
-        return new PohonKinerjaDto.SimpleResponse(
-                entity.getId(),
-                entity.getParentId(),
-                entity.getNamaPohon(),
-                entity.getTahun(),
-                entity.getJenisPohon().name(),
-                entity.getLevelPohon(),
-                entity.getKodeOpd(),
-                entity.getKodePemda(),
-                entity.getStatus()
-        );
-    }
-
-    private PohonKinerjaDto.DetailResponse mapToResponse(PohonKinerja entity) {
-        List<Indikator> indikators = indikatorRepository.findByPohonKinerjaId(entity.getId());
-        List<PohonKinerjaDto.IndikatorResponse> indikatorDtos = new ArrayList<>();
-
-        if (indikators != null && !indikators.isEmpty()) {
-            List<Long> indIds = indikators.stream().map(Indikator::getId).toList();
-            List<Target> allTargets = targetRepository.findByIndikatorIdIn(indIds);
-
-            for (Indikator ind : indikators) {
-                List<PohonKinerjaDto.TargetResponse> targetDtos = allTargets.stream()
-                        .filter(t -> t.getIndikatorId().equals(ind.getId()))
-                        .map(this::mapTargetToResponse)
-                        .toList();
-
-                indikatorDtos.add(new PohonKinerjaDto.IndikatorResponse(
-                        ind.getId(),
-                        ind.getIndikator(),
-                        ind.getKeterangan(),
-                        ind.getTahun(),
-                        targetDtos
-                ));
-            }
-        }
-
-        return new PohonKinerjaDto.DetailResponse(
-                entity.getId(),
-                entity.getParentId(),
-                entity.getNamaPohon(),
-                entity.getKeterangan(),
-                entity.getTahun(),
-                entity.getJenisPohon(),
-                entity.getLevelPohon(),
-                entity.getKodeOpd(),
-                entity.getKodePemda(),
-                entity.getStatus(),
-                indikatorDtos
-        );
-    }
-
-    private PohonKinerjaDto.TreeResponse mapToTreeDto(PohonKinerja entity) {
-        return PohonKinerjaDto.TreeResponse.builder()
-                .id(entity.getId())
-                .parentId(entity.getParentId())
-                .namaPohon(entity.getNamaPohon())
-                .keterangan(entity.getKeterangan())
-                .tahun(entity.getTahun())
-                .jenisPohon(entity.getJenisPohon().name())
-                .levelPohon(entity.getLevelPohon())
-                .status(entity.getStatus())
-                .build();
-    }
-
     private void buildHierarchy(PohonKinerjaDto.TreeResponse parent, Map<Long, PohonKinerjaDto.TreeResponse> allNodes) {
         for (PohonKinerjaDto.TreeResponse candidate : allNodes.values()) {
-            if (candidate.getParentId() != null && candidate.getParentId().equals(parent.getId())) {
+            if (Objects.equals(candidate.getParentId(), parent.getId())) {
                 parent.getChildren().add(candidate);
                 buildHierarchy(candidate, allNodes);
             }
         }
+    }
+
+    private void validateBusinessRules(PohonKinerjaDto.Request req) {
+        if (req.jenisPohon() == JenisPohon.OPERATIONAL_N) {
+            if (req.levelPohon() < 7) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Level Operational_N min 7");
+        } else if (req.jenisPohon().getLevel() != req.levelPohon()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Level tidak valid");
+        }
+
+        if (req.parentId() != null) {
+            PohonKinerja parent = pohonKinerjaRepository.findById(req.parentId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            if (req.kodeOpd() != null && !req.kodeOpd().isBlank()) {
+                if (parent.getKodeOpd() == null && parent.getLevelPohon() != 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hierarki OPD Salah");
+            }
+        } else if (req.levelPohon() != 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Harus level 0");
+        }
+    }
+
+    private void validateChildrenConsistency(Long id, PohonKinerjaDto.Request req) {
+        List<PohonKinerja> children = pohonKinerjaRepository.findByParentId(id);
+        for (PohonKinerja child : children) {
+            boolean valid = (req.levelPohon() == 0 && child.getLevelPohon() == 4) || (child.getLevelPohon() == req.levelPohon() + 1);
+            if (!valid && child.getKodeOpd() != null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Konflik level anak");
+        }
+    }
+
+    private void saveIndikatorsAndTargets(Long pohonId, List<PohonKinerjaDto.IndikatorRequest> requests) {
+        if (requests == null) return;
+        for (PohonKinerjaDto.IndikatorRequest indReq : requests) {
+            Indikator ind = indikatorRepository.save(Indikator.builder().pohonKinerjaId(pohonId)
+                    .indikator(indReq.indikator()).keterangan(indReq.keterangan()).tahun(indReq.tahun()).build());
+            if (indReq.targets() != null) {
+                for (PohonKinerjaDto.TargetRequest tReq : indReq.targets()) {
+                    targetRepository.save(Target.builder().indikatorId(ind.getId())
+                            .nilai(tReq.nilai()).satuan(tReq.satuan()).tahun(tReq.tahun()).build());
+                }
+            }
+        }
+    }
+
+    private void syncIndikators(Long pohonId, List<PohonKinerjaDto.IndikatorRequest> requests) {
+        List<Indikator> currentInds = indikatorRepository.findByPohonKinerjaId(pohonId);
+        Set<Long> reqIds = requests == null ? Collections.emptySet() :
+                requests.stream().map(PohonKinerjaDto.IndikatorRequest::id).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        currentInds.stream().filter(i -> !reqIds.contains(i.getId())).forEach(i -> {
+            targetRepository.deleteByIndikatorId(i.getId());
+            indikatorRepository.deleteById(i.getId());
+        });
+
+        if (requests != null) {
+            for (PohonKinerjaDto.IndikatorRequest req : requests) {
+                Indikator ind = (req.id() != null) ? indikatorRepository.findById(req.id()).orElse(new Indikator()) : new Indikator();
+                ind.setPohonKinerjaId(pohonId); ind.setIndikator(req.indikator());
+                ind.setKeterangan(req.keterangan()); ind.setTahun(req.tahun());
+                Indikator savedInd = indikatorRepository.save(ind);
+                syncTargets(savedInd.getId(), req.targets());
+            }
+        }
+    }
+
+    private void syncTargets(Long indId, List<PohonKinerjaDto.TargetRequest> requests) {
+        List<Target> currentTargets = targetRepository.findByIndikatorId(indId);
+        Set<Long> reqIds = requests == null ? Collections.emptySet() :
+                requests.stream().map(PohonKinerjaDto.TargetRequest::id).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        currentTargets.stream().filter(t -> !reqIds.contains(t.getId())).forEach(t -> targetRepository.deleteById(t.getId()));
+
+        if (requests != null) {
+            for (PohonKinerjaDto.TargetRequest req : requests) {
+                Target t = (req.id() != null) ? targetRepository.findById(req.id()).orElse(new Target()) : new Target();
+                t.setIndikatorId(indId); t.setNilai(req.nilai()); t.setSatuan(req.satuan()); t.setTahun(req.tahun());
+                targetRepository.save(t);
+            }
+        }
+    }
+
+    private PohonKinerjaDto.TreeResponse mapToTreeDto(PohonKinerja e) {
+        return PohonKinerjaDto.TreeResponse.builder().id(e.getId()).parentId(e.getParentId())
+                .namaPohon(e.getNamaPohon()).keterangan(e.getKeterangan()).tahun(e.getTahun())
+                .jenisPohon(e.getJenisPohon().name()).levelPohon(e.getLevelPohon())
+                .status(e.getStatus()).children(new ArrayList<>()).build();
+    }
+
+    private PohonKinerjaDto.SimpleResponse mapToSimpleResponse(PohonKinerja e) {
+        return new PohonKinerjaDto.SimpleResponse(e.getId(), e.getParentId(), e.getNamaPohon(), e.getTahun(),
+                e.getJenisPohon().name(), e.getLevelPohon(), e.getKodeOpd(), e.getKodePemda(), e.getStatus());
+    }
+
+    private PohonKinerjaDto.DetailResponse mapToDetailResponse(PohonKinerja e) {
+        return new PohonKinerjaDto.DetailResponse(e.getId(), e.getParentId(), e.getNamaPohon(), e.getKeterangan(),
+                e.getTahun(), e.getJenisPohon(), e.getLevelPohon(), e.getKodeOpd(), e.getKodePemda(), e.getStatus(), new ArrayList<>());
     }
 }

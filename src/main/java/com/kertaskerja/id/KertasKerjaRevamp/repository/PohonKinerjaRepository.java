@@ -37,9 +37,7 @@ public class PohonKinerjaRepository {
 
     public boolean existsById(Long id) {
         String sql = "SELECT count(*) FROM pohon_kinerja WHERE id = :id";
-
         Integer count = jdbcClient.sql(sql).param("id", id).query(Integer.class).single();
-
         return count > 0;
     }
 
@@ -63,9 +61,9 @@ public class PohonKinerjaRepository {
             return pohon;
         } else {
             String sql = """
-                    INSERT INTO pohon_kinerja 
+                    INSERT INTO pohon_kinerja
                     (parent_id, nama_pohon, keterangan, tahun, jenis_pohon, level_pohon, kode_opd, kode_pemda, status)
-                    VALUES 
+                    VALUES
                     (:parentId, :nama, :ket, :tahun, :jenis, :level, :opd, :pemda, :status)
                     RETURNING *
                     """;
@@ -136,5 +134,35 @@ public class PohonKinerjaRepository {
     public void deleteById(Long id) {
         String sql = "DELETE FROM pohon_kinerja WHERE id = :id";
         jdbcClient.sql(sql).param("id", id).update();
+    }
+
+    public List<PohonKinerja> findAllByKodeOpdAndTahun(String kodeOpd, Integer tahun) {
+        String sql = """
+                SELECT * FROM pohon_kinerja
+                WHERE kode_opd = :kodeOpd
+                  AND tahun = :tahun
+                ORDER BY level_pohon, id
+                """;
+        return jdbcClient.sql(sql)
+                .param("kodeOpd", kodeOpd)
+                .param("tahun", tahun)
+                .query(pohonRowMapper)
+                .list();
+    }
+
+    public List<PohonKinerja> findRootsByKodeOpdAndTahun(String kodeOpd, Integer tahun) {
+        String sql = """
+                SELECT * FROM pohon_kinerja
+                WHERE kode_opd = :kodeOpd
+                  AND tahun = :tahun
+                  AND level_pohon = 0
+                  AND parent_id IS NULL
+                ORDER BY id
+                """;
+        return jdbcClient.sql(sql)
+                .param("kodeOpd", kodeOpd)
+                .param("tahun", tahun)
+                .query(pohonRowMapper)
+                .list();
     }
 }

@@ -127,4 +127,14 @@ public class PohonKinerjaDto {
             String satuan,
             Integer tahun
     ) {}
+
+    public record OpdTreeResponse(
+            String kodeOpd,
+            String namaOpd,        // Akan di-populate oleh frontend
+            Integer tahun,
+            List<TreeResponse> roots   // Bisa multiple tematik roots
+    ) {
+        @lombok.Builder
+        public OpdTreeResponse {}
+    }
 }
