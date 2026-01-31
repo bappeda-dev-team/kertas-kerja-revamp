@@ -28,10 +28,12 @@ public class PohonKinerjaController {
         return ResponseEntity.ok(ApiResponse.success(treeData, "Successfully loaded tree data by ID"));
     }
 
-    @GetMapping("/tematik")
-    @Operation(summary = "Get All Tematik (Root Level)")
-    public ResponseEntity<ApiResponse<List<PohonKinerjaDto.SimpleResponse>>> getTematik() {
-        List<PohonKinerjaDto.SimpleResponse> data = service.findAllTematik();
+    @GetMapping("/tematik/{tahun}")
+    @Operation(summary = "Get All Tematik (Root Level) by Tahun")
+    public ResponseEntity<ApiResponse<PohonKinerjaDto.TematikWrapper>> getTematik(
+            @PathVariable Integer tahun
+    ) {
+        PohonKinerjaDto.TematikWrapper data = service.findAllTematik(tahun);
         return ResponseEntity.ok(ApiResponse.success(data, "Successfully loaded all tematik data"));
     }
 

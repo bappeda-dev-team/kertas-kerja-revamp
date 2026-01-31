@@ -1,8 +1,10 @@
 package com.kertaskerja.id.KertasKerjaRevamp.repository;
 
+import com.kertaskerja.id.KertasKerjaRevamp.dto.PohonKinerjaDto;
 import com.kertaskerja.id.KertasKerjaRevamp.enums.JenisPohon;
 import com.kertaskerja.id.KertasKerjaRevamp.model.PohonKinerja;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -16,6 +18,7 @@ import java.util.Optional;
 public class PohonKinerjaRepository {
 
     private final JdbcClient jdbcClient;
+    private final JdbcTemplate jdbcTemplate;
 
     private final RowMapper<PohonKinerja> pohonRowMapper = (rs, rowNum) -> {
         PohonKinerja p = new PohonKinerja();
@@ -40,6 +43,64 @@ public class PohonKinerjaRepository {
         Integer count = jdbcClient.sql(sql).param("id", id).query(Integer.class).single();
         return count > 0;
     }
+
+    public List<PohonKinerjaDto.TematikItem> findTematikByTahun(Integer tahun) {
+        String sql = """
+        SELECT id, parent_id, nama_pohon, jenis_pohon, level_pohon, keterangan 
+        FROM pohon_kinerja 
+        WHERE jenis_pohon = 'TEMATIK' AND tahun = ?
+        ORDER BY id
+    """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Long pohonId = rs.getLong("id");
+            return new PohonKinerjaDto.TematikItem(
+                    pohonId,
+                    rs.getObject("parent_id", Long.class),
+                    rs.getString("nama_pohon"),
+                    rs.getString("jenis_pohon"),
+                    rs.getInt("level_pohon"),
+                    rs.getString("keterangan"),
+                    findIndikatorByPohonId(pohonId)
+            );
+        }, tahun);
+    }
+
+    private List<PohonKinerjaDto.IndikatorResponse> findIndikatorByPohonId(Long pohonId) {
+        String sql = """
+        SELECT id, indikator, keterangan, tahun
+        FROM indikator
+        WHERE pohon_kinerja_id = ?
+    """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Long indikatorId = rs.getLong("id");
+            return new PohonKinerjaDto.IndikatorResponse(
+                    indikatorId,
+                    rs.getString("indikator"),
+                    rs.getString("keterangan"),
+                    rs.getInt("tahun"),
+                    findTargetByIndikatorId(indikatorId)
+            );
+        }, pohonId);
+    }
+
+    private List<PohonKinerjaDto.TargetResponse> findTargetByIndikatorId(Long indikatorId) {
+        String sql = """
+        SELECT id, nilai, satuan, tahun
+        FROM target
+        WHERE indikator_id = ?
+    """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) ->
+                new PohonKinerjaDto.TargetResponse(
+                        rs.getLong("id"),
+                        rs.getDouble("nilai"),
+                        rs.getString("satuan"),
+                        rs.getInt("tahun")
+                ), indikatorId);
+    }
+
 
     public List<PohonKinerja> findTreeNodes(Long rootId) {
         String sql = """

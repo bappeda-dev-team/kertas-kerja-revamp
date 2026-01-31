@@ -73,9 +73,10 @@ public class PohonKinerjaService {
                 .stream().map(this::mapToTreeDto).toList();
     }
 
-    public List<PohonKinerjaDto.SimpleResponse> findAllTematik() {
-        return pohonKinerjaRepository.findAllTematik().stream()
-                .map(this::mapToSimpleResponse).toList();
+    @Transactional(readOnly = true)
+    public PohonKinerjaDto.TematikWrapper findAllTematik(Integer tahun) {
+        List<PohonKinerjaDto.TematikItem> listTematik = pohonKinerjaRepository.findTematikByTahun(tahun);
+        return new PohonKinerjaDto.TematikWrapper(tahun, listTematik);
     }
 
     @Transactional
