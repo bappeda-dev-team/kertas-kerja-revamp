@@ -226,4 +226,38 @@ public class PohonKinerjaRepository {
                 .query(pohonRowMapper)
                 .list();
     }
+
+    public List<PohonKinerjaDto.CountLevelDetail> countByKodeOpdAndTahunGroupByLevel(String kodeOpd, Integer tahun) {
+        String sql = """
+            SELECT 
+                level_pohon, 
+                jenis_pohon, 
+                SUM(CASE WHEN status = 'menunggu' THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN status IS NULL OR status = '' OR status != 'menunggu' THEN 1 ELSE 0 END) AS approved
+            FROM pohon_kinerja
+            WHERE kode_opd = ?
+              AND tahun = ?
+              AND level_pohon >= 4
+            GROUP BY level_pohon, jenis_pohon
+            ORDER BY level_pohon
+            """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new PohonKinerjaDto.CountLevelDetail(
+                rs.getInt("level_pohon"),
+                rs.getString("jenis_pohon"),
+                rs.getInt("pending"),
+                rs.getInt("approved")
+        ), kodeOpd, tahun);
+    }
+
+    public int countTotalByKodeOpdAndTahun(String kodeOpd, Integer tahun) {
+        String sql = """
+            SELECT COUNT(*) 
+            FROM pohon_kinerja 
+            WHERE kode_opd = ? AND tahun = ?
+            """;
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, kodeOpd, tahun);
+        return count != null ? count : 0;
+    }
 }

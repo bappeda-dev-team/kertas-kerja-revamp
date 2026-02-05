@@ -239,6 +239,18 @@ public class PohonKinerjaService {
         }
     }
 
+    public PohonKinerjaDto.CountPohonResponse countPohonByKodeOpdAndTahun(String kodeOpd, Integer tahun) {
+        int total = pohonKinerjaRepository.countTotalByKodeOpdAndTahun(kodeOpd, tahun);
+        List<PohonKinerjaDto.CountLevelDetail> details = pohonKinerjaRepository.countByKodeOpdAndTahunGroupByLevel(kodeOpd, tahun);
+
+        return new PohonKinerjaDto.CountPohonResponse(
+                kodeOpd,
+                tahun,
+                total,
+                details
+        );
+    }
+
     private PohonKinerjaDto.TreeResponse mapToTreeDto(PohonKinerja e) {
         return PohonKinerjaDto.TreeResponse.builder().id(e.getId()).parentId(e.getParentId())
                 .namaPohon(e.getNamaPohon()).keterangan(e.getKeterangan()).tahun(e.getTahun())

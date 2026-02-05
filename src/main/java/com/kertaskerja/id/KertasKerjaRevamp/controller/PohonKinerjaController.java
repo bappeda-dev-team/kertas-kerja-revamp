@@ -77,4 +77,14 @@ public class PohonKinerjaController {
         List<PohonKinerjaDto.TreeResponse> response = service.getStrategicListByKodeOpdAndTahun(kodeOpd, tahun);
         return ResponseEntity.ok(ApiResponse.success(response, "Successfully loaded Strategic OPD list"));
     }
+
+    @GetMapping("/count")
+    @Operation(summary = "Count Pohon Kinerja by OPD and Tahun")
+    public ResponseEntity<ApiResponse<PohonKinerjaDto.CountPohonResponse>> countPohon(
+            @RequestParam String kodeOpd,
+            @RequestParam Integer tahun
+    ) {
+        PohonKinerjaDto.CountPohonResponse response = service.countPohonByKodeOpdAndTahun(kodeOpd, tahun);
+        return ResponseEntity.ok(ApiResponse.success(response, "Success"));
+    }
 }

@@ -120,4 +120,19 @@ public class PohonKinerjaDto {
             Integer tahun,
             List<TreeResponse> roots
     ) {}
+
+    // === COUNT POHON KINERJA DTO ===
+    public record CountLevelDetail(
+            Integer level,
+            String jenisPohon,
+            Integer pending,
+            Integer approved
+    ) {}
+
+    public record CountPohonResponse(
+            String kodeOpd,
+            Integer tahun,
+            Integer totalPemda,
+            List<CountLevelDetail> detailLevel
+    ) {}
 }
